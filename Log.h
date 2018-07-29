@@ -1,7 +1,8 @@
 #ifndef _YLOG_H_
 #define _YLOG_H_
 
-class LOG {
+class LOG 
+{
 	public:
 		/**
 		 * 获取当前时间
@@ -29,21 +30,21 @@ class LOG {
 		/**
 		 * 初始化日志系统，调用getbuffer
 		*/
-    	Log(char *command);
+    		Log(char *command);
 
     	
-    	~Log();//如果缓存不为空把缓存中的内容刷入磁盘中
+    		~Log();//如果缓存不为空把缓存中的内容刷入磁盘中
 
 
-    	/**
+    		/**
 		 * 检查是否放的进去buffer
 		 * 数据大小+end_指针原来大小是否超过buffer的size
 		 * 超过返回1，没有超过返回0
 		*/
-    	check_buffer();
+    		check_buffer();
 
     protected:
-        char *bufferdata_;
+        	char *bufferdata_;
 		char *end_;
 		char *start_;
 };
