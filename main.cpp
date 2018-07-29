@@ -5,14 +5,6 @@
 
 using namespace std;
 
-char** command(string input);
-char** createSolve(string remain);
-char** loadSolve(string remain);
-char** insertSolve(string remain);
-char** updateSolve(string remain);
-char** deleteSolve(string remain);
-char** RQSolve(string remain);
-char** closeSolve(string remain);
 int main()
 {
     while(1)
@@ -22,8 +14,7 @@ int main()
         cout << "please input: ";
 
         cin >> input;
-
-        //cout << input.compare("CREATE TABLE Taxi (id CHAR(10),x INT,y INT);") << endl;
+        //input = "CREATE TABLE Taxi (id CHAR(10),x INT,y INT);" ;
 
         string head = input.substr(0,input.find(' '));
         string remain = input.substr(input.find(' ')+1,input.length());
