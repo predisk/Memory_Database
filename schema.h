@@ -1,20 +1,3 @@
-/*
-    Copyright 2018, simba wei.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #ifndef SCHEMA_H
 #define SCHEMA_H
 
@@ -79,17 +62,19 @@ class Schema
 
     void copy_tuple(void* dest, const void* const src);
 
-    std::vector<std::string> getTypeName();
+    int save(string schema);
+
+    int getColPos(string colName);
+
+    std::vector<std::string> getColsName();
 
     string getTableName();
-
-    void printSchema();
 
     void create(string input);
 
     string pretty_print(void* tuple, char sep);
     private:
-        vector<std::string>typeName_;
+        vector<std::string> colName_;
         vector<ColumnType> vct_;
         vector<int> offset_; ///< be compared with the first column
         int totalsize_;
