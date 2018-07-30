@@ -1,26 +1,10 @@
-/*
-    Copyright 2018, simba wei.
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
 #include "schema.h"
 #include<cassert>
 #include<cstdlib>
 #include<sstream>
 #include<iomanip>
-
+#include<iostream>
+#include<fstream>
 using namespace std;
 
 
@@ -237,63 +221,44 @@ std::vector<std::string> Schema::output_tuple(void *data)
     }
     return ret;
 }
-string Schema::getTableName()
+
+string Schema::pretty_print(void* tuple, char sep)
+{
+    string ret;
+    const vector<string>& tokens = output_tuple(tuple);
+    for (int i=0; i<tokens.size()-1; ++i)
+        ret += tokens[i] + sep;
+    if (tokens.size() > 1)
+        ret += tokens[tokens.size()-1];
+    return ret;
+}
+
+std::vector<std::string> Schema::getColsName() //OK
+{
+    return colName_;
+}
+
+string Schema::getTableName() //OK
 {
     return tableName_;
 }
-std::vector<std::string> Schema::getTypeName()
+
+void Schema::create(string input) //OK
 {
-    return typeName_;
-}
-void Schema::printSchema()
-{
-    cout << tableName_;
-    cout << "(";
-    for(unsigned int i=0;i<columnCounts();i++)
-    {
-        switch (vct_[i])
-        {
-        case CT_INTEGER:
-            cout << "int";
-            break;
-        case CT_LONG:
-            cout << "long";
-            break;
-        case CT_DECIMAL:
-            // every decimal in TPC-H has 2 digits of precision
-            cout << "decimal";
-            break;
-        case CT_CHAR:
-            cout << "char(";
-            if(i == columnCounts()-1)
-                cout << totalsize_-offset_[i];
-            else
-                cout << offset_[i+1]-offset_[i]-1; //-1 for '\0'
-            cout << ")";
-            break;
-        case CT_POINTER:
-            cout<<"pointer cannot be transferred!"<<endl;
-            break;
-        }
-        if(i!=columnCounts()-1)
-            cout<<",";
-    }
-    cout << ");";
-}
-void Schema::create(string input)
-{
-    // input = "tableName (typeName1 dataType1,typeName2 dataType2,...);"
+    // input = "tableName (colName1 dataType1,colName2 dataType2,...);"
+    save(input);
+
     tableName_ = input.substr(0,input.find(' '));
 
     string remain = input.substr(input.find(' ')+2,input.length());
-    string typeName,val;
+    string colName,val;
     bool lastOne = false;
 
     while(1)
     {
-        typeName = remain.substr(0,remain.find(' '));
+        colName = remain.substr(0,remain.find(' '));
         remain = remain.substr(remain.find(' ')+1,remain.length());
-        typeName_.push_back(typeName);
+        colName_.push_back(colName);
         if(int(remain.find(','))== -1)
         {
             int endPos = remain.find(';');
@@ -340,15 +305,27 @@ void Schema::create(string input)
         }
         if(lastOne)break;
     }
+    //save(get)
 }
 
-string Schema::pretty_print(void* tuple, char sep)
+int Schema::getColPos(string colName) //OK
 {
-    string ret;
-    const vector<string>& tokens = output_tuple(tuple);
-    for (int i=0; i<tokens.size()-1; ++i)
-        ret += tokens[i] + sep;
-    if (tokens.size() > 1)
-        ret += tokens[tokens.size()-1];
-    return ret;
+    std::vector<std::string>colList = getColsName();
+    for(int i=0;i<colList.size();i++)
+    {
+        if(!colList[i].compare(colName))
+            return i;
+    }
+    return -1;
+}
+
+int Schema::save(string schema)
+{
+    std::ofstream metadata;
+    metadata.open("medata.txt",ios::app);
+    assert(metadata.is_open());
+
+    schema = schema+"\n";
+    metadata << schema.c_str();
+    metadata.close();
 }
