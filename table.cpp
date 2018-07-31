@@ -117,6 +117,34 @@ void WriteTable::append(const void * const src)
     }
 }
 
+int mystrtok(char** argv,char* string)
+{
+    char* ptr;
+    char* split = " ";
+    int arg_num=0;
+    ptr = strtok(string , split);
+    cout<<"ptr1 "<<ptr<<endl;
+    while(ptr != NULL){
+        argv[arg_num]=ptr;
+        arg_num++;
+        cout<<ptr<<endl;
+        ptr = strtok(NULL,split);
+    }
+    return arg_num;
+}
+
+void WriteTable::insert(const char* input){
+    char* argv[100];
+	int arg_num = mystrtok(argv,input);
+	//printf("arg_num = %d\n",arg_num);
+	unsigned int s = schema_ -> get_tuple_size();
+	if(s != arg_num){
+        printf("the table size and input size is different!\n");
+	}
+	append(argv);
+}
+
+
 void WriteTable::concatenate(const WriteTable &table)
 {
     if(schema_->get_tuple_size() == table.schema_->get_tuple_size())
