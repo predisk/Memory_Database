@@ -6,21 +6,23 @@
 
 using namespace std;
 
-//vector<WriteTable*>openTables;
-vector<string>existTables;
-
-void init();
 //WriteTable* isOpen(string tableName);
 bool isExist(string tableName);
 //WriteTable loadTable(string tableName);
-
+//vector<WriteTable*>openTables;
+vector<string>existTables; // all exist tableName
 int main()
 {
+
+
+    void init();
+
     init();
     while(1)
     {
 
         string input;
+        bool error = false;
         cout << "please input: ";
 
         getline(cin,input);
@@ -36,8 +38,25 @@ int main()
             string second = remain.substr(0,remain.find(' ')); //TABLE
             remain = remain.substr(remain.find(' ')+1,remain.length());
 
+            string tableName = remain.substr(0,remain.find(' '));
+            for(int i=0;i<existTables.size();i++)
+            {
+                if(!existTables[i].compare(tableName))
+                {
+                    cout << "ERROR: the table name is repeated!" <<endl;
+                    error = true;
+                    break;
+                }
+            }
+            if(error)
+                continue;
+
             Schema s;
-            s.create(remain);
+            if(!s.create(remain))
+            {
+                error = true;
+                continue;
+            }
             // create a table using s
             //openTables.push_back(table)`
 
@@ -73,42 +92,64 @@ int main()
         {
             cout << "Invalid command" <<endl;
         }
-   }
+    }
 }
 
-WriteTable* isOpen(string tableName)
-//test
-{
-    for(int i=0;i<openTables.size();i++)
-    {
-        if(!((openTables[i]->schema_).tableName_).compare(tableName))
-            return openTables[i];
-    }
-    return NULL;
-}
+//WriteTable* isOpen(string tableName)
+////test
+//{
+//    for(int i=0;i<openTables.size();i++)
+//    {
+//        if(!((openTables[i]->schema_).tableName_).compare(tableName))
+//            return openTables[i];
+//    }
+//    return NULL;
+//}
 
 bool isExist(string tableName)
 //test
 {
-    string tmp;
-    for(int i=0;i<existTables.size();i++)
+    for(int i=0; i<existTables.size(); i++)
     {
-        tmp = existTables[i].tableName_;
-        if(!tmp.compare(tableName))
+        if(!existTables[i].compare(tableName))
             return true;
     }
     return false;
 }
 
-void init()
+void init() //OK
 {
     ifstream metadata;
     metadata.open("medata.txt");
     assert(metadata.is_open());
 
     string line;
+    string tableName;
     while(getline(metadata,line))
     {
-        existTables.push_back(line);
+        tableName = line.substr(0,line.find(' '));
+        existTables.push_back(tableName);
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
