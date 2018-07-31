@@ -243,14 +243,18 @@ string Schema::getTableName() //OK
     return tableName_;
 }
 
-void Schema::create(string input) //OK
+int Schema::create(string input) //OK
 {
     // input = "tableName (colName1 dataType1,colName2 dataType2,...);"
-    save(input);
+    if(!save(input))
+    {
+        cout << "ERROR: Schema save fail" <<endl;
+        return 0;
+    }
 
     tableName_ = input.substr(0,input.find(' '));
-
     string remain = input.substr(input.find(' ')+2,input.length());
+
     string colName,val;
     bool lastOne = false;
 
@@ -305,7 +309,7 @@ void Schema::create(string input) //OK
         }
         if(lastOne)break;
     }
-    //save(get)
+    return 1;
 }
 
 int Schema::getColPos(string colName) //OK
@@ -323,9 +327,10 @@ int Schema::save(string schema)
 {
     std::ofstream metadata;
     metadata.open("medata.txt",ios::app);
-    assert(metadata.is_open());
-
+    if(!metadata.is_open())
+        return 0;
     schema = schema+"\n";
     metadata << schema.c_str();
     metadata.close();
+    return 1;
 }
