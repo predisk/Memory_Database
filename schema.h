@@ -70,7 +70,7 @@ class Schema
 
     string getTableName();
 
-    void create(string input);
+    int create(string input);
 
     string pretty_print(void* tuple, char sep);
     private:
