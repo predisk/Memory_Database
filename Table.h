@@ -1,283 +1,219 @@
-#include "Table.h"
+#ifndef TABLE_H
 
-#include "loader.h"
-
-//#include <glob.h>
-
-//#include <sys/mman.h>
-
-//#include <sys/stat.h>
-
-//#include <fcntl.h>
-
-#include <iostream>
-
-#include "stdlib.h"
-
-//#include <assert.h>
+#define TABLE_H
 
 
 
+#include<string>
 
+#include<vector>
 
-void Table::init(Schema *s, unsigned int size)
+#include "Buffer.h"
 
-{
-
-    schema_ = s;
-
-    data_head_ = 0;
-
-    cur_ = 0;
-
-}
+#include "schema.h"
 
 
 
- LinkedTupleBuffer* Table:: get_root()
+/*
+
+ *TupleBufferCursor
+
+*/
+
+class PageCursor
 
 {
 
-    return data_head_;
+    public:
 
-}
+        /**
 
+        * Return the next page
 
+        * Or NULL if no next page exists
 
-LinkedTupleBuffer* Table:: read_next()
+         */
 
-{
-
-    LinkedTupleBuffer *ret = cur_;
-
-    if(cur_)
-
-        cur_ = cur_->get_next();
-
-    return ret;
-
-}
-
-void Table:: reset()
-
-{
-
-    cur_ = data_head_;
-
-}
+        virtual TupleBuffer *read_next();
 
 
 
-void Table:: close()
+        /**Return Schema object for all pages*/
 
-{
-
-    LinkedTupleBuffer *t = data_head_;
-
-    while(t)
-
-    {
-
-        t = data_head_->get_next();
-
-        delete data_head_;
-
-        data_head_ = t;
-
-    }
-
-    reset();
-
-}
+        virtual Schema *schema();
 
 
 
-void WriteTable::init(Schema* s, unsigned int size)
+        /**
+
+         * Resets the reading point to the start of the page
+
+         */
+
+        virtual void reset();
+
+
+
+        /**
+
+         * closes the cursor
+
+         */
+
+        virtual void close();
+
+
+
+        virtual ~PageCursor();
+
+};
+
+
+
+/*
+
+ * ntainer for a linked list of LinkedTupleBuffer
+
+ */
+
+class Table : public PageCursor
 
 {
 
-    Table::init(s, size);
+    public:
 
-    this->size_ = size;
+      Table() : schema_(NULL), data_head_(NULL), cur_(NULL){}
 
-    data_head_ = new LinkedTupleBuffer(size, s->get_tuple_size());
-
-    last_ = data_head_;
-
-    cur_ = data_head_;
-
-}
+      virtual ~Table();
 
 
 
-Table::LoadErrorT WriteTable::load(const string& filepattern,
+      enum LoadErrorT
 
-        const string& separators)
+      {
 
-{
+          LOAD_OK = 0
 
-    Loader loader(separators[0]);
-
-    loader.load(filepattern, *this);
-
-    return LOAD_OK;
-
-}
+      };
 
 
 
-void WriteTable::append(const vector<string> &input)
-
-{
-
-    unsigned int s = schema_->get_tuple_size();
-
-    if(! last_->can_store(s))
-
-    {
-
-        LinkedTupleBuffer *tmp = new LinkedTupleBuffer(size_, s);
-
-        last_->set_next(tmp);
-
-        last_ = tmp;
-
-    }
-
-    void *target = last_->allocate_tuple();
-
-    schema_->parse_tuple(target, input);
-
-}
-
-void WriteTable::append(const char **data, unsigned int count)
-
-{
-
-    unsigned int s = schema_->get_tuple_size();
-
-    if(!last_->can_store(s))
-
-    {
-
-        LinkedTupleBuffer *tmp = new LinkedTupleBuffer(size_, s);
-
-        last_->set_next(tmp);
-
-        last_ = tmp;
-
-    }
-
-    if(schema_->columnCounts() == count)
-
-    {
-
-        void *target = last_->allocate_tuple();
-
-        schema_->parse_tuple(target, data);
-
-    }
+      virtual LoadErrorT load(const string &filepattern, const string &separators);
 
 
 
-    else
-
-    {
-
-        std::cout << "ERROR COUNT!" << endl;
-
-        //throw NotYetImplemented();
-
-    }
-
-}
+      virtual void init(Schema *s, unsigned int size);
 
 
 
-void WriteTable::append(const void * const src)
+      LinkedTupleBuffer *get_root();
+
+
+
+      LinkedTupleBuffer *read_next();
+
+
+
+      void reset();
+
+
+
+      virtual void close();
+
+
+
+      Schema *schema();
+
+
+
+      void print_table();
+
+
+
+    protected:
+
+      Schema *schema_;
+
+      LinkedTupleBuffer *data_head_;
+
+      LinkedTupleBuffer *cur_;
+
+};
+
+
+
+class WriteTable : public Table
 
 {
 
-    unsigned int s = schema_->get_tuple_size();
+    public:
+
+        WriteTable() : last_(NULL), size_(0){}
 
 
 
-    if(!last_->can_store(s))
-
-    {
-
-        LinkedTupleBuffer *tmp = new LinkedTupleBuffer(size_, s);
-
-        last_->set_next(tmp);
-
-        last_ = tmp;
-
-    }
+        virtual ~WriteTable();
 
 
 
-    void *target = last_->allocate_tuple();
+        void init(Schema *s, unsigned int size);
 
-    if(target != NULL)
+        /**
 
-    {
+         * Load a txt file, where each line is a tuple and each field
 
-        schema_->copy_tuple(target, src);
+         * is separated by any character in the \a sepatators string.
 
-    }
+         */
 
-}
-
-
-int mystrtok(char** argv,char* string)
-{
-    char* ptr;
-    char* split = " ";
-    int arg_num=0;
-    ptr = strtok(string , split);
-    cout<<"ptr1 "<<ptr<<endl;
-    while(ptr != NULL){
-        argv[arg_num]=ptr;
-        arg_num++;
-        cout<<ptr<<endl;
-        ptr = strtok(NULL,split);
-    }
-    return arg_num;
-}
-
-void WriteTable::insert(const char* input){
-    char* argv[100];
-	int arg_num = mystrtok(argv,input);
-	//printf("arg_num = %d\n",arg_num);
-	unsigned int s = schema_ -> get_tuple_size();
-	if(s != arg_num){
-        printf("the table size and input size is different!\n");
-	}
-	append(argv);
-}
+        LoadErrorT load(const string &filepattern, const string &separators);
 
 
-void WriteTable::concatenate(const WriteTable &table)
 
-{
+        /**
 
-    if(schema_->get_tuple_size() == table.schema_->get_tuple_size())
+         * Append the input to this table,
 
-    {
+         * creat new buckets as nucessary
 
-        if(data_head_ == 0)
+         */
 
-        {
+        /*append the vector input*/
 
-            data_head_ = table.data_head_;
+        virtual void append(const vector<string> &input);
 
-        }
+        /*append the @count num input*/
 
-        last_->set_next(table.data_head_);
+        virtual void append(const char **data, unsigned int count);
 
-        last_ = table.last_;
+        /*update the existed tuple*/
 
-    }
+        virtual void append(const void *const src);
 
-}
+        virtual void insert(const char* input);
 
+
+
+        /**
+
+         * append the table to this object
+
+         * caller must check that schemas are same/
+
+         */
+
+        void concatenate(const WriteTable &table);
+
+
+
+    protected:
+
+      LinkedTupleBuffer *last_;
+
+      unsigned int size_;
+
+};
+
+
+
+#endif //TABLE_H
