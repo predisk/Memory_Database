@@ -1,6 +1,16 @@
 #ifndef LOG_H_
 #define LOG_H_
 
+#include "Log.h"
+#include <iostream>
+#include<sstream>
+#include <windows.h>
+#include <string>
+#include <sys/stat.h>
+#include <assert.h>
+#include <stdio.h>
+#include <process.h>
+#include <fstream>//二进制
 class Log {
 	public:
         /**
@@ -16,7 +26,7 @@ class Log {
 
 
     	~Log();
-    	
+
         /**
          * 获取缓存
          * 设置各个指针以及use_lenth的值
@@ -38,7 +48,7 @@ class Log {
         write(char *command);
 
         /**
-         * 
+         *
          * 计算这次提交是否会超过buffer范围
          * 如果超过，调用write_in_disk
          * 写入buffer，更新end_指针
@@ -58,13 +68,18 @@ class Log {
          * 需要执行日志也落盘的操作的接口//暂定
          * 直接调用write_in_disk()
         */
-        flush_log()；
+        flush_log();
+        static void Timer(void *p);
+        write_in_time();
+        int flag;
     protected:
         char time[25];
         char *bufferdata_;
-		void *end_;
-		void *start_;
-		int use_lenth;
+	void *end_;
+	void *start_;
+	int use_lenth;
+	//HANDLE hThread;
+        //unsigned threadID;
 
 
 };
