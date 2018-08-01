@@ -11,7 +11,7 @@
 
 
 #define BUFFERSIZE 1024
-#define TIMER 1000//定时
+#define TIMER 1000*60//定时一分钟
 using namespace std;
 const char* LogPath="D:\\sample.dat";
 const char* LogPath1="D:\\sample1.txt";
