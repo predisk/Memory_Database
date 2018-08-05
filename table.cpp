@@ -123,7 +123,7 @@ int mystrtok(char** argv,char* string)
     char* split = " ";
     int arg_num=0;
     ptr = strtok(string , split);
-    cout<<"ptr1 "<<ptr<<endl;
+    //cout<<"ptr1 "<<ptr<<endl;
     while(ptr != NULL){
         argv[arg_num]=ptr;
         arg_num++;
@@ -132,6 +132,65 @@ int mystrtok(char** argv,char* string)
     }
     return arg_num;
 }
+
+void WriteTable::insert(const char* input){
+    char* argv[100];
+    int col = schema_.getColPos("ID");
+    int arg_num = mystrtok(argv,input);
+    int id = atoi(argv[col]);
+    //printf("arg_num = %d\n",arg_num);
+    unsigned int s = schema_ -> get_tuple_size();
+    if(s != arg_num){
+        printf("the table size and input size is different!\n");
+    }  
+    void* new_data = search(id);
+    if(new_data == NULL){
+        printf("the id is exit! can't insert again\n");
+    }
+    schema_ -> parse_tuple(new_data,argv);
+}
+
+
+
+int Distance(int x , int y ,int X ,int Y)
+{
+    return sqrt((x-X)^2 + (y-Y)^2);
+}
+
+vector<void*> WriteTable::RangeQuery(int x,int y,int r)
+{
+    int x_col = schema_ ->getColPos("X");
+    int y_col = schema_ -> getColPos("Y");
+    int X,Y;
+    vector<void*> ret;
+    vector<string> tuple_data; 
+    LinkedTupleBuffer *cur;
+    cur = data_head_;
+    int tuple_num = cur->cur_capacity() / cur->get_tuple_size();
+    while(cur != NULL){
+        for(unsigned int i=0; i<tuple_num;i++){
+            void* data = get_tuple_offset(i);
+            bool flag=empty_tuple(data);
+            if(flag==true){
+                break;
+            }
+            else{
+                tuple_data = schema_ -> output_tuple(data);
+                stringstream stream(tuple_data[x_col]);
+                stream >> X;
+                stringstream stream(tuple_data[y_col]);
+                stream >> Y;
+                int dis = Distance(x,y,X,Y);
+                if(dis <= r^2){
+                    ret.push_back(data);
+                }
+            } 
+        }
+        cur = cur -> set_next();
+    }
+    return ret; 
+}
+
 
 void WriteTable::insert(const char* input){
     char* argv[100];
