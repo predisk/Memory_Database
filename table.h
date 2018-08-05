@@ -5,6 +5,8 @@
 
 #include<string>
 #include<vector>
+#include <cmath>
+#include <sstream>
 #include "Buffer.h"
 #include "schema.h"
 
@@ -31,7 +33,8 @@ class PageCursor
         /**
          * closes the cursor
          */
-        virtual void close();
+
+    virtual void close();
 
         virtual ~PageCursor();
 };
@@ -103,6 +106,12 @@ class WriteTable : public Table
          */
         void concatenate(const WriteTable &table);
         void insert(const char* input);
+
+        /**
+         find the distance to (x,y) <= r^2
+         and return the address 
+         */
+        vector<void*> RangeQuery(int x,int y,int r);
 
     protected:
       LinkedTupleBuffer *last_;
