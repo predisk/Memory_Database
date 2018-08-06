@@ -211,8 +211,8 @@ void* WriteTable::search(int id)
                 }
                 else
                 {
-                    void* idAddr = schema_->calc_offset(tupleAddr,index);
-                    if((*(int*)idAddr)==id)
+                    vector<string> entry = schema_->output_tuple(tupleAddr);
+                    if(id == atoi(entry[index].c_str()))
                         return tupleAddr;
                 }
             }
