@@ -172,7 +172,7 @@ vector<void*> WriteTable::RangeQuery(int x,int y,int r)
             void* data = get_tuple_offset(i);
             bool flag=empty_tuple(data);
             if(flag==true){
-                break;
+                continue;
             }
             else{
                 tuple_data = schema_ -> output_tuple(data);
