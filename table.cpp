@@ -133,7 +133,7 @@ int mystrtok(char** argv,char* string)
     return arg_num;
 }
 
-void WriteTable::insert(const char* input){
+bool WriteTable::insert(const char* input){
     char* argv[100];
     int col = schema_->getColPos("ID");
     int arg_num = mystrtok(argv,input);
@@ -146,8 +146,10 @@ void WriteTable::insert(const char* input){
     void* new_data = search(id);
     if(new_data == NULL){
         printf("the id is exit! can't insert again\n");
+	return false;
     }
     schema_ -> parse_tuple(new_data,argv);
+    return true;
 }
 
 
@@ -191,16 +193,7 @@ vector<void*> WriteTable::RangeQuery(int x,int y,int r)
 }
 
 
-void WriteTable::insert(const char* input){
-    char* argv[100];
-	int arg_num = mystrtok(argv,input);
-	//printf("arg_num = %d\n",arg_num);
-	unsigned int s = schema_ -> get_tuple_size();
-	if(s != arg_num){
-        printf("the table size and input size is different!\n");
-	}
-	append(argv);
-}
+
 
 
 void WriteTable::concatenate(const WriteTable &table)
