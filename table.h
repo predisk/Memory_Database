@@ -33,8 +33,7 @@ class PageCursor
         /**
          * closes the cursor
          */
-
-    virtual void close();
+        virtual void close();
 
         virtual ~PageCursor();
 };
@@ -100,26 +99,44 @@ class WriteTable : public Table
         /*update the existed tuple*/
         virtual void append(const void *const src);
 
-        /**
-         * append the table to this object
-         * caller must check that schemas are same/
-         */
-        void concatenate(const WriteTable &table);
-        bool insert(const char* input);
-
+        /*query operation*/
+        void query(char q_clause[200], vector <char*>& id_res);
+        
         /**
          find the distance to (x,y) <= r^2
          and return the address 
          */
         vector<void*> RangeQuery(int x,int y,int r);
-        
-        void query(char q_clause[200],vector <char*>& id_res);
-        void* WriteTable::search(char* id);
-        string getTableName();
+
+        bool insert(const char* input);
+
+
+
+        void* search_tuple(char *s_id);
+
+
+        void parse_updated_data(void *dest, char *input, int col);
+
+
+        /*update operation*/
+        bool update(string& arg);
+
+        /*delete operation*/
+        bool delete_solve (string& arg);
+
+        /**
+         * append the table to this object
+         * caller must check that schemas are same/
+         */
+        void concatenate(const WriteTable &table);
 
     protected:
       LinkedTupleBuffer *last_;
       unsigned int size_;
 };
+
+int mystrtok(char **argv, char *string);
+
+int Distance(int x, int y, int X, int Y);
 
 #endif //TABLE_H
