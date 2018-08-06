@@ -223,6 +223,61 @@ void* WriteTable::search(int id)
     return 0;
 }
 
+void WriteTable::query(char q_clause[200],vector <int>& id_res)
+//q_clause: colName1=xxx,colName2=xxx,colName3=xxx...
+{
+    vector<string>items;
+    char* item = strtok(q_clause,",");
+    while(item!=NULL)
+    {
+        items.push_back(item);
+        item = strtok(NULL,",");
+    }
+
+    vector<string>colName;
+    vector<string>value;
+    vector<int>colIndex;
+    for(unsigned int i=0; i<items.size(); i++)
+    {
+        int tmp = items[i].find("=");
+        colName.push_back(items[i].substr(0,tmp));
+        value.push_back(items[i].substr(tmp+1,items[i].size()));
+    }
+    for(unsigned int i=0; i<colName.size(); i++)
+    {
+        colIndex.push_back(schema_->getColPos(colName[i]));
+    }
+
+    LinkedTupleBuffer* cur = data_head_;
+    TupleBuffer::Iterator itr = cur->createIterator();
+    while(cur)
+    {
+        void* tupleAddr = itr.next();
+        while(tupleAddr)
+        {
+            if(!cur->empty_tuple(tupleAddr))
+            {
+                bool same = true;
+                vector<string>entry = schema_->output_tuple(tupleAddr);
+                for(unsigned int i=0;i<colName.size();i++)
+                {
+                    if(!entry[colIndex[i]].compare(value[i]))
+                    {
+                        same = false;
+                        break;
+                    }
+                }
+                if(same)
+                {
+                    int idIdex = schema_->getColPos("id");
+                    id_res.push_back(atoi(entry[idIdex].c_str()));
+                }
+            }
+            tupleAddr = itr.next();
+        }
+        cur = cur->get_next();
+    }
+}
 
 
 void WriteTable::concatenate(const WriteTable &table)
