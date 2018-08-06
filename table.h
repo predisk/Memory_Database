@@ -125,7 +125,6 @@ class WriteTable : public Table
          * caller must check that schemas are same/
          */
         void concatenate(const WriteTable &table);
-        string getTableName();
 
     protected:
       LinkedTupleBuffer *last_;
