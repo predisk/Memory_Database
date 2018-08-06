@@ -110,13 +110,9 @@ class WriteTable : public Table
 
         bool insert(const char* input);
 
-
-
         void* search_tuple(char *s_id);
 
-
         void parse_updated_data(void *dest, char *input, int col);
-
 
         /*update operation*/
         bool update(string& arg);
@@ -129,6 +125,7 @@ class WriteTable : public Table
          * caller must check that schemas are same/
          */
         void concatenate(const WriteTable &table);
+        string getTableName();
 
     protected:
       LinkedTupleBuffer *last_;
