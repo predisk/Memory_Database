@@ -135,11 +135,11 @@ int mystrtok(char** argv,char* string)
 
 void WriteTable::insert(const char* input){
     char* argv[100];
-    int col = schema_.getColPos("ID");
+    int col = schema_->getColPos("ID");
     int arg_num = mystrtok(argv,input);
     int id = atoi(argv[col]);
     //printf("arg_num = %d\n",arg_num);
-    unsigned int s = schema_ -> get_tuple_size();
+    unsigned int s = schema_ -> columnCounts();
     if(s != arg_num){
         printf("the table size and input size is different!\n");
     }  
@@ -166,7 +166,7 @@ vector<void*> WriteTable::RangeQuery(int x,int y,int r)
     vector<string> tuple_data; 
     LinkedTupleBuffer *cur;
     cur = data_head_;
-    int tuple_num = cur->cur_capacity() / cur->get_tuple_size();
+    int tuple_num = cur->cur_capacity() / schema_->get_tuple_size();
     while(cur != NULL){
         for(unsigned int i=0; i<tuple_num;i++){
             void* data = get_tuple_offset(i);
