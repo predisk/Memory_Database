@@ -113,8 +113,9 @@ class WriteTable : public Table
          */
         vector<void*> RangeQuery(int x,int y,int r);
         
-        void query(char q_clause[200],vector <int>& id_res);
-        void* WriteTable::search(int id);
+        void query(char q_clause[200],vector <char*>& id_res);
+        void* WriteTable::search(char* id);
+        string getTableName();
 
     protected:
       LinkedTupleBuffer *last_;
