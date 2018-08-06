@@ -67,7 +67,7 @@ const unsigned int Buffer::cur_capacity()
 
 /*************************************************************
 
-			TupleBuffer
+					TupleBuffer
 
 *************************************************************/
 
@@ -104,4 +104,34 @@ bool TupleBuffer::is_valid_tuple_add(void* loc)
 void* TupleBuffer::allocate_tuple()
 {
 	return Buffer::allocate(tuplesize_);
+}
+
+void TupleBuffer::tuple_add(void *&data, int len)
+{
+    char *p_med = reinterpret_cast<char *>(data);
+    p_med += len;
+    data = reinterpret_cast<void *>(p_med); 
+}
+
+bool LinkedTupleBuffer:: delete_record(void* data)
+{
+	if(capacity_<=tuplesize_)
+		return false;
+	capacity_ -= tuplesize_;
+
+	if((char*)data+tuplesize_==(char*)free_)
+	{
+		char *tmp = reinterpret_cast<char *>(free_);
+		tmp -= tuplesize_;
+		free_ = reinterpret_cast<void *>(tmp);
+	}
+	else
+	{
+		memset(data, -1, tuplesize_);
+	}
+	return true;
+}
+bool LinkedTupleBuffer::empty_tuple(void* data)
+{
+		return *(int*)data == -1;
 }

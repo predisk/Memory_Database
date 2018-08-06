@@ -44,11 +44,13 @@ public:
 
 	/*clear the contests*/
 	void clear();
+
 	/*return the capacity of the buffer*/
 	const unsigned int cur_capacity();
 
 	/*return the used space of this buffer*/
 	const unsigned int used_space();
+
 
 };
 
@@ -94,50 +96,56 @@ public:
 	 */
 	void* allocate_tuple();
 
+	/*each time the pointer add the number of the tuplesize*/
+	void tuple_add(void *&data, int len);
 
-
-	class Iterator 
+	class Iterator
 	{
 		friend class TupleBuffer;
-	
-		private:
+
+	private:
 		int tupleid_;
-		TupleBuffer* page_;
-	
-		protected:
-		Iterator(TupleBuffer* p){
-			tupleid_=0;
-			page_=p;
+		TupleBuffer *page_;
+
+	protected:
+		Iterator(TupleBuffer *p)
+		{
+			tupleid_ = 0;
+			page_ = p;
 		}
-	
-		public:
-		Iterator& operator= (Iterator& rhs){
-			page_=rhs.page_;
-			tupleid_=rhs.tupleid_;
+
+	public:
+		Iterator &operator=(Iterator &rhs)
+		{
+			page_ = rhs.page_;
+			tupleid_ = rhs.tupleid_;
 			return *this;
 		}
-	
-		void place(TupleBuffer* p){
+
+		void place(TupleBuffer *p)
+		{
 			page_ = p;
 			reset();
 		}
-	
-		void* next(){
-			return page_->get_tuple_offset(tupleid_);
+
+		void *next()
+		{
+			return page_->get_tuple_offset(tupleid_++);
 		}
-	
-		void reset(){
-			tupleid_=0;
+
+		void reset()
+		{
+			tupleid_ = 0;
 		}
 	};
+
 	Iterator createIterator()
 	{
 		return Iterator(this);
 	}
+
+
 };
-
-
-
 
 class LinkedTupleBuffer : public TupleBuffer{
 public:
@@ -155,8 +163,17 @@ public:
 	 */
 	LinkedTupleBuffer(unsigned int size, unsigned int tuplesize)
             : TupleBuffer(size, tuplesize), next_(0) { }
+	/*return the head of the tuplebuffer*/
+	void* get_head()
+	{
+		return head_;
+	}
+	/*delete one tuple*/
+	bool delete_record(void *data);
+	/*return true if the tuplesize of the data is empty,which means this tuple is deleted */
+	bool empty_tuple(void *data);
 
-    /*
+	/*
      * return a pointer to next tuplebuffer.
     */
     LinkedTupleBuffer* get_next(){
