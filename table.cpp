@@ -447,10 +447,6 @@ vector<void*> WriteTable::RangeQuery(int x,int y,int r)
     }
     return ret; 
 }
-
-string WriteTable::getTableName()
-{
-    return schema_->getTableName();
-}	
+	
 	
 
