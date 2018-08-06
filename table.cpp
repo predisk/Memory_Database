@@ -192,7 +192,36 @@ vector<void*> WriteTable::RangeQuery(int x,int y,int r)
     return ret; 
 }
 
-
+void* WriteTable::search(int id)
+{
+    LinkedTupleBuffer* cur = data_head_;
+    while(!cur)
+    {
+        TupleBuffer::Iterator itr = cur->createIterator();
+        void* tupleAddr = itr.next();
+        while(tupleAddr)
+        {
+            if(!cur->empty_tuple(tupleAddr))
+            {
+                int index = schema_->getColPos("id");
+                if(index<0)
+                {
+                    cout << "not such col." <<endl;
+                    return 0;
+                }
+                else
+                {
+                    void* idAddr = schema_->calc_offset(tupleAddr,index);
+                    if((*(int*)idAddr)==id)
+                        return tupleAddr;
+                }
+            }
+            tupleAddr = itr.next();
+        }
+        cur = cur->get_next();
+    }
+    return 0;
+}
 
 
 
