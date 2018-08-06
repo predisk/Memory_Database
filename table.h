@@ -105,7 +105,7 @@ class WriteTable : public Table
          * caller must check that schemas are same/
          */
         void concatenate(const WriteTable &table);
-        void insert(const char* input);
+        bool insert(const char* input);
 
         /**
          find the distance to (x,y) <= r^2
