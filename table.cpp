@@ -192,38 +192,7 @@ vector<void*> WriteTable::RangeQuery(int x,int y,int r)
     return ret; 
 }
 
-void* WriteTable::search(int id)
-{
-    LinkedTupleBuffer* cur = data_head_;
-    while(!cur)
-    {
-        TupleBuffer::Iterator itr = cur->createIterator();
-        void* tupleAddr = itr.next();
-        while(tupleAddr)
-        {
-            if(!cur->empty_tuple(tupleAddr))
-            {
-                int index = schema_->getColPos("id");
-                if(index<0)
-                {
-                    cout << "not such col." <<endl;
-                    return 0;
-                }
-                else
-                {
-                    vector<string> entry = schema_->output_tuple(tupleAddr);
-                    if(id == atoi(entry[index].c_str()))
-                        return tupleAddr;
-                }
-            }
-            tupleAddr = itr.next();
-        }
-        cur = cur->get_next();
-    }
-    return 0;
-}
-
-void WriteTable::query(char q_clause[200],vector <int>& id_res)
+void WriteTable::query(char q_clause[200],vector <char*>& id_res)
 //q_clause: colName1=xxx,colName2=xxx,colName3=xxx...
 {
     vector<string>items;
@@ -270,13 +239,49 @@ void WriteTable::query(char q_clause[200],vector <int>& id_res)
                 if(same)
                 {
                     int idIdex = schema_->getColPos("id");
-                    id_res.push_back(atoi(entry[idIdex].c_str()));
+                    id_res.push_back((char*)entry[idIdex].c_str());
                 }
             }
             tupleAddr = itr.next();
         }
         cur = cur->get_next();
     }
+}
+
+void* WriteTable::search(char* id)
+{
+    LinkedTupleBuffer* cur = data_head_;
+    while(!cur)
+    {
+        TupleBuffer::Iterator itr = cur->createIterator();
+        void* tupleAddr = itr.next();
+        while(tupleAddr)
+        {
+            if(!cur->empty_tuple(tupleAddr))
+            {
+                int index = schema_->getColPos("id");
+                if(index<0)
+                {
+                    cout << "not such col." <<endl;
+                    return 0;
+                }
+                else
+                {
+                    vector<string> entry = schema_->output_tuple(tupleAddr);
+                    if(entry[index].compare(id))
+                        return tupleAddr;
+                }
+            }
+            tupleAddr = itr.next();
+        }
+        cur = cur->get_next();
+    }
+    return 0;
+}
+
+string WriteTable::getTableName()
+{
+    return schema_->getTableName();
 }
 
 
