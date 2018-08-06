@@ -112,6 +112,9 @@ class WriteTable : public Table
          and return the address 
          */
         vector<void*> RangeQuery(int x,int y,int r);
+        
+        void query(char q_clause[200],vector <int>& id_res);
+        void* WriteTable::search(int id);
 
     protected:
       LinkedTupleBuffer *last_;
