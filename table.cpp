@@ -167,23 +167,22 @@ vector<void*> WriteTable::RangeQuery(int x,int y,int r)
     LinkedTupleBuffer *cur;
     cur = data_head_;
     int tuple_num = cur->cur_capacity() / schema_->get_tuple_size();
-    while(cur != NULL){
-        for(unsigned int i=0; i<tuple_num;i++){
+    while(cur != NULL)
+    {
+        for(unsigned int i=0; i<tuple_num;i++)
+	{
             void* data = get_tuple_offset(i);
             bool flag=empty_tuple(data);
-            if(flag==true){
-                continue;
-            }
-            else{
+            if(!flag)
+	    {
                 tuple_data = schema_ -> output_tuple(data);
                 stringstream stream(tuple_data[x_col]);
                 stream >> X;
                 stringstream stream(tuple_data[y_col]);
                 stream >> Y;
                 int dis = Distance(x,y,X,Y);
-                if(dis <= r^2){
+                if(dis <= r^2)
                     ret.push_back(data);
-                }
             } 
         }
         cur = cur -> set_next();
