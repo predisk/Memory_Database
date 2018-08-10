@@ -12,6 +12,7 @@ private:
     vector<string>existTables_;
     int bufferSize_;
     string path_;
+    string fileType_;
 protected:
     //load the table from disk to memory
     WriteTable* loadTable(string tableName); //ok
@@ -26,7 +27,7 @@ protected:
     //or false
     bool isExist(string tableName);  //ok
 public:
-    Manager():bufferSize_(0),path_("") {}  //ok
+    Manager():bufferSize_(0),path_(""),fileType_(".txt") {}  //ok
     ~Manager() {}
 
     //init the existTables
@@ -38,6 +39,29 @@ public:
     bool preserve(WriteTable* ptr);
 
     int auto_preserve();
+
+    bool saveSchema(string schema);
+
+    void modify(WriteTable* w);
+
+    bool updateExistTable();
+
+    Schema* creatSchema(string input);
+
+    WriteTable* creatTable(Schema* s);
+
+    //-------------------operator for table ------------
+    bool loadTuple(string tableName,string fileName,string sep=" ");
+
+    bool insertTuple(string tableName,string values);
+
+    bool updateTuple(string tableName,string values,string clue);
+
+    bool deleteTuple(string tableName,string clue);
+
+    bool deleteTable(string tableName);
+
+    bool rangeQuery(string tableName,string arg);
 
     bool close(string tableName);
 };
