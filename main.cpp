@@ -1,92 +1,101 @@
 #include <iostream>
 #include<fstream>
 #include<assert.h>
-#include"schema.h"
-//#include"table.h"
+#include "schema.h"
+#include "table.h"
+#include "Manager.h"
 
 using namespace std;
 
-//WriteTable* isOpen(string tableName);
-bool isExist(string tableName);
-//WriteTable loadTable(string tableName);
-//vector<WriteTable*>openTables;
-vector<string>existTables; // all exist tableName
 int main()
 {
+    Manager m;
+    m.init(40);//bufferSize
 
-
-    void init();
-
-    init();
     while(1)
     {
-
         string input;
-        bool error = false;
-        cout << "please input: ";
-
+        cout << "->";
         getline(cin,input);
-
-        //cout << input.compare("CREATE TABLE Taxi (id CHAR(10),x INT,y INT);");
 
         string head = input.substr(0,input.find(' '));
         string remain = input.substr(input.find(' ')+1,input.length());
 
+        //"CREATE TABLE Taxi (id CHAR(10),x INT,y INT)"
         if(!head.compare("CREATE"))
         {
-            //"CREATE TABLE Taxi (id CHAR(10),x INT,y INT);"
-            string second = remain.substr(0,remain.find(' ')); //TABLE
             remain = remain.substr(remain.find(' ')+1,remain.length());
-
-            string tableName = remain.substr(0,remain.find(' '));
-            for(int i=0;i<existTables.size();i++)
-            {
-                if(!existTables[i].compare(tableName))
-                {
-                    cout << "ERROR: the table name is repeated!" <<endl;
-                    error = true;
-                    break;
-                }
-            }
-            if(error)
+            Schema* s = m.creatSchema(remain);
+            if(!s)
                 continue;
-
-            Schema s;
-            if(!s.create(remain))
-            {
-                error = true;
-                continue;
-            }
-            // create a table using s
-            //openTables.push_back(table)`
-
+            else
+                WriteTable* w = m.creatTable(s);
         }
+
+        //LOAD tableName path=C:\\Document\\Projects\\CPPtest sep=' '
         else if(!head.compare("LOAD"))
         {
-            cout << "IS LOAD" << endl;
+
+            string tableName = remain.substr(0,remain.find(' '));
+            string path = remain.substr(remain.find("path")+5,remain.find("sep")-remain.find("path")-6);
+            string sep = remain.substr(remain.find("sep")+5,remain.length())-remain.find("sep")-6);
+            m.loadTuple(tableName,fileName,sep);
         }
+
+        //INSERT into tablename (value1, value2, ..., valuen)
         else if(!head.compare("INSERT"))
         {
-            //log
-            cout << "IS INSERT" << endl;
+            remain = remain.substr(remain.find(' ')+1,remain.length());
+            string tableName = remain.substr(0,remain.find(' '));
+            string values = remain.substr(remain.find('(')+1,remain.find(')')-remain.find('(')-1);
+            m.insertTuple(tableName,values);
         }
+
+        //UPDATE tablename SET field1=new_value1,field2=new_value2  <where id= value>
         else if(!head.compare("UPDATE"))
         {
-            //log
-            cout << "IS UPDATE" << endl;
+            string tableName = remain.substr(0,remain.find(' '));
+            string values = remain.substr(remain.find("SET")+4,remain.find('<')-remain.find("SET")-5);
+            string query = remain.substr(remain.find("where")+6,remain.find('>')-remain.find("where")-6);
+            m.updateTuple(tableName,values,query);
         }
+
+        //DELETE from tablename <where id = value>
         else if(!head.compare("DELETE"))
         {
-            //log
-            cout << "IS DELETE" << endl;
+            remain = remain.substr(0,remain.find(' ')+1);
+            string tableName = remain.substr(0,remain.find(' '));
+            if(remain.find("where") >=0)
+            {
+                string query = remain.substr(remain.find("where")+6,remain.find('>')-remain.find("where")-6);
+                m.deleteTuple(tableName,query);
+            }
+            else
+            {
+                cout << "If you decide to delete the whole table please input YES" << endl;
+                string sure;
+                getline(cin,sure);
+                if(!sure.compare("YES"))
+                    m.deleteTable(tableName);
+                else
+                    continue;
+            }
         }
+
+        //RANGEQUERY tableName (posX,poY)
         else if(!head.compare("RangeQuery"))
         {
-            cout << "IS RangeQuery" <<endl;
+
+            string tableName = remain.substr(0,remain.find(' '));
+            string arg = remain.substr(remain.find('(')+1,remain.find(')')-remain.find('(')-1);
+            m.rangeQuery(tableName,arg);
         }
+
+        //CLOSE tableName
         else if(!head.compare("CLOSE"))
         {
-            cout << "IS CLOSE" << endl;
+            string tableName = remain;
+            m.close(tableName);
         }
         else
         {
@@ -94,62 +103,3 @@ int main()
         }
     }
 }
-
-//WriteTable* isOpen(string tableName)
-////test
-//{
-//    for(int i=0;i<openTables.size();i++)
-//    {
-//        if(!((openTables[i]->schema_).tableName_).compare(tableName))
-//            return openTables[i];
-//    }
-//    return NULL;
-//}
-
-bool isExist(string tableName)
-//test
-{
-    for(int i=0; i<existTables.size(); i++)
-    {
-        if(!existTables[i].compare(tableName))
-            return true;
-    }
-    return false;
-}
-
-void init() //OK
-{
-    ifstream metadata;
-    metadata.open("medata.txt");
-    assert(metadata.is_open());
-
-    string line;
-    string tableName;
-    while(getline(metadata,line))
-    {
-        tableName = line.substr(0,line.find(' '));
-        existTables.push_back(tableName);
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
