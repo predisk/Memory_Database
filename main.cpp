@@ -5,6 +5,7 @@
 #include "table.h"
 #include "Manager.h"
 #include "command.h"
+#include "Log.h"
 
 using namespace std;
 
@@ -13,13 +14,13 @@ int main()
     Manager m;
     Command cmd;
     m.init(40);//bufferSize
-
+    Log log1;
     while(1)
     {
         string input;
         cout << "-> ";
         getline(cin,input);
-
+        log1.write(input.data());
         transform(input.begin(),input.end(),input.begin(),::tolower);
         string head = input.substr(0,input.find(' '));
         string remain = input.substr(input.find(' ')+1,input.length());
@@ -104,6 +105,10 @@ int main()
         else if(!head.compare("exit"))
         {
             exit(0);
+        }
+        else if(!head.compare("RECOVER"))
+        {
+            log1.recover();
         }
         else
         {
