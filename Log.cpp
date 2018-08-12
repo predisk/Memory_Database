@@ -260,7 +260,7 @@ Log::recover(){
         }
 
         else{
-            cout << "Invalid command" <<endl;
+            continue;
         }
     }
         
