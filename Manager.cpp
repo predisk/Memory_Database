@@ -132,7 +132,7 @@ bool Manager::preserve(WriteTable* ptr)
                 {
                     if(!cur->empty_tuple(tupleAddr))
                     {
-                        char sep = 'a';
+                        char sep = ' ';
                         string line = ptr->schema()->pretty_print(tupleAddr,sep);
                         out << line.c_str() << endl;
                     }
@@ -212,27 +212,26 @@ Schema* Manager::creatSchema(string input)
         cout << "The table name is repeated."<<endl;
         return 0;
     }
-    else
+
+    Schema* s = new Schema;
+    if(!s)
     {
-        Schema* s = new Schema;
-        if(!s)
-        {
-            cout << "new schema error." << endl;
-            return 0;
-        }
-        if(!s->create(input))
-        {
-            delete s;
-            return 0;
-        }
-        if(!saveSchema(input))
-        {
-            cout << "schema preserve error." << endl;
-            delete s;
-            return 0;
-        }
-        return s;
+        cout << "new schema error." << endl;
+        return 0;
     }
+    if(!s->create(input))
+    {
+        delete s;
+        return 0;
+    }
+    if(!saveSchema(input))
+    {
+        cout << "schema preserve error." << endl;
+        delete s;
+        return 0;
+    }
+    return s;
+}
 }
 
 WriteTable* Manager::creatTable(Schema* s)
@@ -261,6 +260,17 @@ void Manager::modify(WriteTable* w)
     }
 }
 //------------------operator function---------------------
+bool Manager::create(string input)
+{
+    Schema* s = creatSchema(input);
+    if(!s)
+        return false;
+    WriteTable* w = creatTable(s);
+    if(!w)
+        return false;
+    return true;
+}
+
 bool Manager::loadTuple(string tableName,string path,string sep)
 {
     WriteTable* w =getTable(tableName);
@@ -274,14 +284,14 @@ bool Manager::loadTuple(string tableName,string path,string sep)
     }
 }
 
-bool Manager::insertTuple(string tableName,string arg)
+bool Manager::insertTuple(string tableName,vector<CVpair>& data)
 {
     WriteTable* w = getTable(tableName);
     if(!w)
         return false;
     else
     {
-        if(w->insert(arg))
+        if(w->insert(data))
         {
             modify(w);
             return true;
@@ -291,14 +301,14 @@ bool Manager::insertTuple(string tableName,string arg)
     }
 }
 
-bool Manager::updateTuple(string tableName,string arg,string clue)
+bool Manager::updateTuple(string tableName,vector<CVpair>& clause,vector<CVpair>& data)
 {
     WriteTable* w = getTable(tableName);
     if(!w)
         return false;
     else
     {
-        if(w->update(arg,clue))
+        if(w->update(clause,data))
         {
             modify(w);
             return true;
@@ -308,14 +318,14 @@ bool Manager::updateTuple(string tableName,string arg,string clue)
     }
 }
 
-bool Manager::deleteTuple(string tableName,string clue)
+bool Manager::deleteTuple(string tableName,vector<CVpair>& clause)
 {
     WriteTable* w= getTable(tableName);
     if(!w)
         return false;
     else
     {
-        if(w->deleteTuple(clue))
+        if(w->deleteTuple(clause))
         {
             modify(w);
             return true;
@@ -334,7 +344,7 @@ bool Manager::deleteTable(string tableName)
     }
     else
     {
-        for(unsigned int i=0;i<openTables_.size();i++)
+        for(unsigned int i=0; i<openTables_.size(); i++)
         {
             string tn = openTables_[i]->schema()->getTableName();
             if(!tn.compare(tableName))
@@ -375,14 +385,22 @@ bool Manager::deleteTable(string tableName)
     }
 }
 
-bool Manager::rangeQuery(string tableName,string arg)
+bool Manager::rangeQuery(string tableName,double x,double y,double r)
 {
     WriteTable* w = getTable(tableName);
     if(!w)
         return false;
     else
     {
-        w->rangeQuery(arg);
+        vector<void*>tuples = w->RangeQuery(x,y,r);
+        if(tuples.size())
+        {
+            cout << "no tuple in the range." << endl;
+        }
+        else
+        {
+            w->printTupless(tuples);
+        }
         return true;
     }
 }
