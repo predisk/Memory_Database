@@ -62,8 +62,6 @@ class Schema
 
     void copy_tuple(void* dest, const void* const src);
 
-    int save(string schema);
-
     int getColPos(string colName);
 
     std::vector<std::string> getColsName();
