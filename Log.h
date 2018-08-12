@@ -23,8 +23,6 @@ class Log {
          * 调用write_in_disk,确保buffer内容都已落盘
          * 删除缓存
         */
-
-
     	~Log();
 
         /**
@@ -66,20 +64,31 @@ class Log {
         /**
          * 其他部分的数据写入磁盘的时候
          * 需要执行日志也落盘的操作的接口//暂定
-         * 直接调用write_in_disk()
+         *
         */
         flush_log();
+
+         /**
+         * 一定时间调用flush_log()
+         */
         static void Timer(void *p);
-        write_in_time();
-        int flag;
+        //write_in_time();
+        auto_write();
+        checkpoint();
+        recover();
     protected:
         char time[25];
         char *bufferdata_;
-	void *end_;
-	void *start_;
-	int use_lenth;
-	//HANDLE hThread;
+		void *end_;
+		void *start_;
+		int use_lenth;
+		//HANDLE hThread;
         //unsigned threadID;
+        /**
+         * 是否需要重新记录检查点
+         * 1为需要 0不需要
+         */
+        int flag;
 
 
 };
