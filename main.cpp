@@ -104,6 +104,7 @@ int main()
         }
         else if(!head.compare("exit"))
         {
+            m.auto_preserve();
             exit(0);
         }
         else if(!head.compare("RECOVER"))
