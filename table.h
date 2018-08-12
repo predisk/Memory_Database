@@ -5,54 +5,25 @@
 
 #include<string>
 #include<vector>
-#include <cmath>
-#include <sstream>
+#include<math.h>
+#include<sstream>
 #include "Buffer.h"
 #include "schema.h"
-
-/*
- *TupleBufferCursor
-*/
-class PageCursor
-{
-    public:
-        /**
-        * Return the next page
-        * Or NULL if no next page exists 
-         */
-        virtual TupleBuffer *read_next();
-
-        /**Return Schema object for all pages*/
-        virtual Schema *schema();
-
-        /**
-         * Resets the reading point to the start of the page
-         */
-        virtual void reset();
-
-        /**
-         * closes the cursor
-         */
-        virtual void close();
-
-        virtual ~PageCursor();
-};
-
-/*
- * ntainer for a linked list of LinkedTupleBuffer
- */
-class Table : public PageCursor
+#include "loader.h"
+#include "parser.h"
+typedef pair<string,string> CVpair; //colName+value;
+class Table
 {
     public:
       Table() : schema_(NULL), data_head_(NULL), cur_(NULL){}
-      virtual ~Table();
+      virtual ~Table(){}
 
       enum LoadErrorT
       {
           LOAD_OK = 0
       };
 
-      virtual LoadErrorT load(const string &filepattern, const string &separators);
+      virtual LoadErrorT load(const string &filepattern, const string &separators)=0;
 
       virtual void init(Schema *s, unsigned int size);
 
@@ -64,9 +35,13 @@ class Table : public PageCursor
 
       virtual void close();
 
-      Schema *schema();
+      Schema *schema()
+      {
+          return schema_;
+      }
 
       void print_table();
+
 
     protected:
       Schema *schema_;
@@ -74,12 +49,12 @@ class Table : public PageCursor
       LinkedTupleBuffer *cur_;
 };
 
-class WriteTable : public Table 
+class WriteTable : public Table
 {
     public:
         WriteTable() : last_(NULL), size_(0){}
 
-        virtual ~WriteTable();
+        virtual ~WriteTable(){}
 
         void init(Schema *s, unsigned int size);
         /**
@@ -99,40 +74,39 @@ class WriteTable : public Table
         /*update the existed tuple*/
         virtual void append(const void *const src);
 
-        /*query operation*/
-        void query(char q_clause[200], vector <char*>& id_res);
-        
-        /**
-         find the distance to (x,y) <= r^2
-         and return the address 
-         */
-        vector<void*> RangeQuery(int x,int y,int r);
-
-        bool insert(const char* input);
-
-        void* search_tuple(char *s_id);
-
-        void parse_updated_data(void *dest, char *input, int col);
-
-        /*update operation*/
-        bool update(string& arg);
-
-        /*delete operation*/
-        bool delete_solve (string& arg);
-
         /**
          * append the table to this object
          * caller must check that schemas are same/
          */
         void concatenate(const WriteTable &table);
 
+        void query(vector<CVpair> &clause,vector <string>& id_res);
+
+
+        void printTuples();
+        void printTupless(vector<void*>&input);
+
+        bool insert(vector<CVpair>& entry);
+
+        void parse_updated_data(void* dest,char* data,int col);
+
+        bool update(vector<CVpair>& clause,vector<CVpair>& newCV);
+
+        bool deleteTuple(string& arg);
+
+        bool deleteTuple(vector<CVpair>& clause);
+
+        void* search_tuple(string id);
+
+        unsigned int tupleTotal();
+
+        double distance(double x,double y,double centerX,double centerY);
+
+        vector<void*> RangeQuery(double centerX,double centerY,double r);
+
     protected:
       LinkedTupleBuffer *last_;
       unsigned int size_;
 };
-
-int mystrtok(char **argv, char *string);
-
-int Distance(int x, int y, int X, int Y);
 
 #endif //TABLE_H
