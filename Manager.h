@@ -51,17 +51,36 @@ public:
     WriteTable* creatTable(Schema* s);
 
     //-------------------operator for table ------------
+    bool create(string input);
+
     bool loadTuple(string tableName,string fileName,string sep=" ");
 
-    bool insertTuple(string tableName,string values);
+    bool insertTuple(string tableName,vector<CVpair>& data);
 
-    bool updateTuple(string tableName,string values,string clue);
+    bool updateTuple(string tableName,vector<CVpair>& clause,vector<CVpair>& data);
 
-    bool deleteTuple(string tableName,string clue);
+    bool deleteTuple(string tableName,vector<CVpair>& clause);
 
     bool deleteTable(string tableName);
 
-    bool rangeQuery(string tableName,string arg);
+    bool rangeQuery(string tableName,double x,double y,double r);
 
     bool close(string tableName);
+
+    bool recovery(string line);
+    //-----------test-------------------
+    vector<bool> testModify()
+    {
+        return isModify_;
+    }
+
+    vector<WriteTable*> testOpen()
+    {
+        return openTables_;
+    }
+
+    vector<string> testExist()
+    {
+        return existTables_;
+    }
 };
