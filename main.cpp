@@ -4,71 +4,71 @@
 #include "schema.h"
 #include "table.h"
 #include "Manager.h"
+#include "command.h"
 
 using namespace std;
 
 int main()
 {
     Manager m;
+    Command cmd;
     m.init(40);//bufferSize
 
     while(1)
     {
         string input;
-        cout << "->";
+        cout << "-> ";
         getline(cin,input);
 
+        transform(input.begin(),input.end(),input.begin(),::tolower);
         string head = input.substr(0,input.find(' '));
         string remain = input.substr(input.find(' ')+1,input.length());
 
-        //"CREATE TABLE Taxi (id CHAR(10),x INT,y INT)"
-        if(!head.compare("CREATE"))
+        //"CREATE TABLE Taxi (id INT,x INT,y INT)"
+        if(!head.compare("create"))
         {
             remain = remain.substr(remain.find(' ')+1,remain.length());
-            Schema* s = m.creatSchema(remain);
-            if(!s)
-                continue;
-            else
-                WriteTable* w = m.creatTable(s);
+            m.create(remain);
         }
 
         //LOAD tableName path=C:\\Document\\Projects\\CPPtest sep=' '
-        else if(!head.compare("LOAD"))
+        else if(!head.compare("load"))
         {
 
             string tableName = remain.substr(0,remain.find(' '));
             string path = remain.substr(remain.find("path")+5,remain.find("sep")-remain.find("path")-6);
-            string sep = remain.substr(remain.find("sep")+5,remain.length())-remain.find("sep")-6);
-            m.loadTuple(tableName,fileName,sep);
+            string sep = remain.substr(remain.find("sep")+5,remain.length()-remain.find("sep")-6);
+            m.loadTuple(tableName,path,sep);
         }
 
-        //INSERT into tablename (value1, value2, ..., valuen)
-        else if(!head.compare("INSERT"))
+        //INSERT into tablename (field1,field2,fieldn) VALUES (value1,value2,valuen)
+        else if(!head.compare("insert"))
         {
-            remain = remain.substr(remain.find(' ')+1,remain.length());
-            string tableName = remain.substr(0,remain.find(' '));
-            string values = remain.substr(remain.find('(')+1,remain.find(')')-remain.find('(')-1);
-            m.insertTuple(tableName,values);
+            string tableName;
+            vector<CVpair> data;
+            cmd.insertTuple(input,tableName,data);
+            m.insertTuple(tableName,data);
         }
 
-        //UPDATE tablename SET field1=new_value1,field2=new_value2  <where id= value>
-        else if(!head.compare("UPDATE"))
+        //UPDATE tablename SET field1=new_value1,field2=new_value2  <where id=value,x=3>
+        else if(!head.compare("update"))
         {
-            string tableName = remain.substr(0,remain.find(' '));
-            string values = remain.substr(remain.find("SET")+4,remain.find('<')-remain.find("SET")-5);
-            string query = remain.substr(remain.find("where")+6,remain.find('>')-remain.find("where")-6);
-            m.updateTuple(tableName,values,query);
+            string tableName;
+            vector<CVpair>clause;
+            vector<CVpair>data;
+            cmd.update(input,tableName,clause,data);
+            m.updateTuple(tableName,clause,data);
         }
 
-        //DELETE from tablename <where id = value>
-        else if(!head.compare("DELETE"))
+        //DELETE from tablename <where id=value,x=4>
+        else if(!head.compare("delete"))
         {
-            remain = remain.substr(0,remain.find(' ')+1);
-            string tableName = remain.substr(0,remain.find(' '));
             if(remain.find("where") >=0)
             {
-                string query = remain.substr(remain.find("where")+6,remain.find('>')-remain.find("where")-6);
-                m.deleteTuple(tableName,query);
+                string tableName;
+                vector<CVpair>clause;
+                cmd.deleteTuple(input,tableName,clause);
+                m.deleteTuple(tableName,clause);
             }
             else
             {
@@ -76,26 +76,34 @@ int main()
                 string sure;
                 getline(cin,sure);
                 if(!sure.compare("YES"))
+                {
+                    string tableName = remain.substr(remain.find("from")+5,remain.find("<")-remain.find("from")-6);
                     m.deleteTable(tableName);
+                }
                 else
                     continue;
             }
         }
 
-        //RANGEQUERY tableName (posX,poY)
-        else if(!head.compare("RangeQuery"))
+        //RANGEQUERY tableName (x,y,r)
+        else if(!head.compare("rangequery"))
         {
-
             string tableName = remain.substr(0,remain.find(' '));
             string arg = remain.substr(remain.find('(')+1,remain.find(')')-remain.find('(')-1);
-            m.rangeQuery(tableName,arg);
+            double x,y,r;
+            cmd.RangeQuery(arg,x,y,r);
+            m.rangeQuery(tableName,x,y,r);
         }
 
         //CLOSE tableName
-        else if(!head.compare("CLOSE"))
+        else if(!head.compare("close"))
         {
             string tableName = remain;
             m.close(tableName);
+        }
+        else if(!head.compare("exit"))
+        {
+            exit(0);
         }
         else
         {
@@ -103,3 +111,23 @@ int main()
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
