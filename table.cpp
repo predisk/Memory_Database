@@ -1,19 +1,14 @@
 
+
+
 #include "table.h"
-#include "loader.h"
-#include "parser.h"
-#include "Buffer.h"
-#include "schema.h"
-#include <cstring>
-#include <vector>
-#include <iterator>
-#include <iostream>
-#include "stdlib.h"
+//#include "loader.h"
 //#include <glob.h>
 //#include <sys/mman.h>
 //#include <sys/stat.h>
 //#include <fcntl.h>
-
+#include <iostream>
+#include "stdlib.h"
 //#include <assert.h>
 
 
@@ -24,7 +19,7 @@ void Table::init(Schema *s, unsigned int size)
     cur_ = 0;
 }
 
- LinkedTupleBuffer* Table:: get_root()
+LinkedTupleBuffer* Table:: get_root()
 {
     return data_head_;
 }
@@ -98,7 +93,7 @@ void WriteTable::append(const char **data, unsigned int count)
         void *target = last_->allocate_tuple();
         schema_->parse_tuple(target, data);
     }
-    
+
     else
     {
         std::cout << "ERROR COUNT!" << endl;
@@ -109,7 +104,7 @@ void WriteTable::append(const char **data, unsigned int count)
 void WriteTable::append(const void * const src)
 {
     unsigned int s = schema_->get_tuple_size();
-    
+
     if(!last_->can_store(s))
     {
         LinkedTupleBuffer *tmp = new LinkedTupleBuffer(size_, s);
@@ -136,162 +131,22 @@ void WriteTable::concatenate(const WriteTable &table)
         last_ = table.last_;
     }
 }
-
-bool WriteTable::delete_solve(string& arg)
+//typedef pair<string,string> CVpair; //colName+value;
+void WriteTable::query(vector<CVpair>& clause, vector <string>& id_res)
 {
-
-
-    char p_qr[100];
-    vector<char*> id_array;
-    size_t p_find;
-    p_find = arg.find("where");
-    arg.copy(p_qr,arg.size()-(p_find+6),p_find + 6);
-    query(p_qr, id_array);
-    if(id_array.empty())
-    {
-        cout << "Clause no result" << endl;
-        return false;
-    }
-    /*Now delete*/
-    vector<char *>::iterator it_;
-
-    for (it_ = id_array.begin(); it_ != id_array.end();it_++)
-    {
-        LinkedTupleBuffer *p_tmp = data_head_;
-        LinkedTupleBuffer *p_par = NULL;
-        while(p_tmp)
-        {
-            int s = schema_->get_tuple_size();
-            void *tuple_buf = p_tmp->get_head();
-            while((char*)tuple_buf - (char*)(p_tmp->get_head()) <= p_tmp->cur_capacity() - s)
-            {
-                if(p_tmp->empty_tuple(tuple_buf))
-                {
-                    p_tmp->tuple_add(tuple_buf,s);
-                    continue;
-                }
-                void* offset;
-                int colindex = schema_->getColPos("id");
-                offset = schema_->calc_offset(tuple_buf, colindex);
-                if(strcmp((char*)offset,*it_)==0)
-                {
-                    if(p_tmp->delete_record(tuple_buf)==false)
-                    {
-                        cout<<"delete error"<<endl;
-                        return false;
-                    }
-                    break;
-                }
-                p_tmp->tuple_add(tuple_buf, s);
-            }
-            if((char*)tuple_buf - (char*)(p_tmp->get_head()) <= p_tmp->cur_capacity() - s)
-            {
-                if(p_tmp->cur_capacity()==0)
-                {
-                    if(p_tmp==data_head_)//if the deleted node is head node
-                    {
-                        p_par = p_tmp->get_next();
-                    }
-                    else
-                    {
-                        p_par->set_next(p_tmp->get_next());                        
-                    }
-                    delete p_tmp;
-                }
-                break;
-            }
-            p_par = p_tmp;
-            p_tmp = p_tmp->get_next();
-        }
-    
-
-    }
-}
-
-bool WriteTable::update(string& arg)
-{
-    Parser* par = new Parser(' ');
-    char *p_data[30] = {NULL};
-    par->parse_line((char*)(arg.c_str()), (const char**)(p_data));
-    vector<char*>::iterator it_;
-    vector<char*> updated_field;
-    vector<char*>updated_data;
-    vector<int> updated_col;
-    for (int i = 2; p_data[i]!=NULL;i++)
-    {
-        if(strcmp(p_data[i+1],"="))
-        {
-            updated_field.push_back(p_data[i]);
-            updated_col.push_back(schema_->getColPos(updated_field[i]));
-            if(updated_col[i]==-1)
-            {
-                cout<<p_data[i]<<"attribute isn't exist"<<endl;
-                return false;
-            }
-        }
-        else if(strcmp(p_data[i-1],"="))
-        {
-            updated_data.push_back(p_data[i]);
-        }
-    }
-    char p_qr[100];
-    vector<char*> id_array;
-    size_t p_find;
-    p_find = arg.find("where");
-    arg.copy(p_qr,arg.size()-(p_find+6),p_find + 6);
-    query(p_qr, id_array);
-    if(id_array.empty())
-    {
-        cout << "Clause no result" << endl;
-        return false;
-    }
-    //to be done: check the updated data type
-    for (it_ = id_array.begin(); it_ != id_array.end();++it_)
-    {
-
-        void *tuple_buf = search_tuple(*it_);
-        if(!tuple_buf)
-        {
-            cout<<*it_<<"doesn't exist"<<endl;
-            return false;
-        }
-        for (int i=0; i < updated_col.size();i++)
-        {
-            parse_updated_data(tuple_buf, updated_data[i], updated_col[i]);
-        }
-
-    }
-    return true;
-}
-
-void WriteTable::query(char q_clause[200], vector <char*>& id_res)
-{
-    vector<string>items;
-    char* item = strtok(q_clause,",");
-    while(item!=NULL)
-    {
-        items.push_back(item);
-        item = strtok(NULL,",");
-    }
-
     vector<string>colName;
     vector<string>value;
     vector<int>colIndex;
-    for(unsigned int i=0; i<items.size(); i++)
+    for(unsigned int i=0;i<clause.size();i++)
     {
-        int tmp = items[i].find("=");
-        colName.push_back(items[i].substr(0,tmp));
-        value.push_back(items[i].substr(tmp+1,items[i].size()));
-    }
-    for(unsigned int i=0; i<colName.size(); i++)
-    {
+        colName.push_back(clause[i].first);
+        value.push_back(clause[i].second);
         colIndex.push_back(schema_->getColPos(colName[i]));
     }
-
     LinkedTupleBuffer* cur = data_head_;
-    TupleBuffer::Iterator itr = cur->createIterator();
     while(cur)
     {
+        TupleBuffer::Iterator itr = cur->createIterator();
         void* tupleAddr = itr.next();
         while(tupleAddr)
         {
@@ -301,7 +156,7 @@ void WriteTable::query(char q_clause[200], vector <char*>& id_res)
                 vector<string>entry = schema_->output_tuple(tupleAddr);
                 for(unsigned int i=0;i<colName.size();i++)
                 {
-                    if(!entry[colIndex[i]].compare(value[i]))
+                    if(entry[colIndex[i]].compare(value[i]))
                     {
                         same = false;
                         break;
@@ -310,7 +165,7 @@ void WriteTable::query(char q_clause[200], vector <char*>& id_res)
                 if(same)
                 {
                     int idIdex = schema_->getColPos("id");
-                    id_res.push_back((char*)(entry[idIdex].c_str()));
+                    id_res.push_back(entry[idIdex]);
                 }
             }
             tupleAddr = itr.next();
@@ -319,6 +174,260 @@ void WriteTable::query(char q_clause[200], vector <char*>& id_res)
     }
 }
 
+void WriteTable::printTuples()
+{
+    LinkedTupleBuffer* cur = get_root();
+    while(cur)
+    {
+        TupleBuffer::Iterator itr = cur->createIterator();
+        void* tupelAddr = itr.next();
+        while(tupelAddr)
+        {
+            if(!cur->empty_tuple(tupelAddr))
+            {
+                char sep = ' ';
+                string tmp = schema()->pretty_print(tupelAddr,sep);
+                cout << tmp.c_str() << endl;
+            }
+            tupelAddr = itr.next();
+        }
+        cur = cur->get_next();
+    }
+}
+
+void WriteTable::printTupless(vector<void*>&input)
+{
+    char sep = ' ';
+    for(unsigned int i=0;i<input.size();i++)
+    {
+        string line = schema()->pretty_print(input[i],sep);
+        cout << line.c_str() <<endl;
+    }
+}
+
+unsigned int WriteTable::tupleTotal()
+{
+    unsigned int ret = 0;
+    LinkedTupleBuffer* cur = get_root();
+    while(cur)
+    {
+        ret+= cur->getTupleCount();
+        cur = cur ->get_next();
+    }
+    return ret;
+}
+bool WriteTable::deleteTuple(vector<CVpair>& clause)
+{
+    vector<string>id_res;
+    query(clause,id_res);
+    if(!id_res.size())
+    {
+        cout << "Couldn't delete: no such tuple." <<endl;
+        return false;
+    }
+    else
+    {
+        for(unsigned int i=0;i<id_res.size();i++)
+        {
+            LinkedTupleBuffer* p_cur = data_head_;
+            LinkedTupleBuffer* p_pre = 0;
+            while(p_cur)
+            {
+                TupleBuffer::Iterator itr= p_cur->createIterator();
+                void* tupleAddr = itr.next();
+                while(tupleAddr)
+                {
+                    if(!p_cur->empty_tuple(tupleAddr))
+                    {
+                        vector<string>entry = schema_->output_tuple(tupleAddr);
+                        string id = entry[schema_->getColPos("id")];
+                        if(!(id.compare(id_res[i])))
+                        {
+                            p_cur->delete_record(tupleAddr);
+                            break;
+                        }
+                    }
+                    tupleAddr = itr.next();
+                }
+                if(p_cur->isEmptyBuffer())
+                {
+                    LinkedTupleBuffer* tmp = p_cur;
+                    p_cur = p_cur->get_next();
+
+                    if(tmp==data_head_)
+                        data_head_ = p_cur;
+                    else
+                        p_pre->set_next(p_cur);
+                    delete tmp;
+                }
+                else
+                {
+                    p_pre = p_cur;
+                    p_cur = p_cur->get_next();
+                }
+            }
+        }
+        return true;
+    }
+}
+
+void* WriteTable::search_tuple(string id)
+{
+    LinkedTupleBuffer* cur = get_root();
+    while(cur)
+    {
+        TupleBuffer::Iterator itr = cur->createIterator();
+        void* tupleAddr = itr.next();
+        while(tupleAddr)
+        {
+            if(!cur->empty_tuple(tupleAddr))
+            {
+                vector<string> entry = schema()->output_tuple(tupleAddr);
+                string cmpId = entry[schema()->getColPos("id")];
+                if(!cmpId.compare(id))
+                    return tupleAddr;
+            }
+            tupleAddr = itr.next();
+        }
+        cur = cur->get_next();
+    }
+    return 0;
+}
+
+bool WriteTable::insert(vector<CVpair>& entry)
+{
+    if(schema()->columnCounts()!=entry.size())
+    {
+        cout << "insert error: the column count is different from schema." << endl;
+        return false;
+    }
+    string id ="";
+    for(unsigned int i=0;i<entry.size();i++)
+    {
+        if(!(entry[i].first).compare("id"))
+        {
+            id = entry[i].second;
+            break;
+        }
+    }
+    if(!id.compare(""))
+    {
+        cout << "insert error: no col is named \'id\'" << endl;
+        return false;
+    }
+    if(search_tuple(id))
+    {
+        cout << "insert error: id is repeated."<<endl;
+        return false;
+    }
+
+    vector<string> input;
+    for(unsigned int i=0;i<entry.size();i++)
+        input.push_back("");
+    for(unsigned int i=0;i<entry.size();i++)
+    {
+        int index = schema()->getColPos(entry[i].first);
+        if(index<0)
+        {
+            cout << "insert error: can't find the col named "  << entry[i].first.c_str() <<endl;
+            return false;
+        }
+        input[index] = entry[i].second;
+    }
+    append(input);
+    return true;
+}
+
+double WriteTable::distance(double x,double y,double centerX,double centerY)
+{
+    return sqrt(pow(x-centerX,2)+pow(y-centerY,2));
+}
+
+vector<void*> WriteTable::RangeQuery(double centerX,double centerY,double r)
+{
+    vector<void*>ret;
+    LinkedTupleBuffer* cur = get_root();
+    while(cur)
+    {
+        TupleBuffer::Iterator itr = cur->createIterator();
+        void* tupleAddr  = itr.next();
+        while(tupleAddr)
+        {
+            if(!cur->empty_tuple(tupleAddr))
+            {
+                Schema* s = schema();
+                vector<string>entry = s->output_tuple(tupleAddr);
+                unsigned int xIndex = s->getColPos("x");
+                unsigned int yIndex = s->getColPos("y");
+                istringstream isX(entry[xIndex]);
+                istringstream isY(entry[yIndex]);
+                double x,y;
+                isX>>x;
+                isY>>y;
+                if(distance(x,y,centerX,centerY)<=r){
+                    cout<<"****"<<endl;
+                    cout<<"x"<<x<<"y"<<y<<endl;
+                    ret.push_back(tupleAddr);
+                }
+            }
+            tupleAddr = itr.next();
+        }
+        cur = cur->get_next();
+    }
+    return ret;
+}
+
+bool WriteTable::update(vector<CVpair>& clause,vector<CVpair>& newCV)
+{
+    vector<string>id_res;
+    query(clause,id_res);
+    Schema* s =schema();
+    if(!id_res.size())
+    {
+        cout << "update error: no such tuple." <<endl;
+        return false;
+    }
+    int idIndex = -1;
+    string id = "id";
+    for(unsigned int i=0;i<newCV.size();i++)
+    {
+        if(!id.compare(newCV[i].first))
+        {
+            idIndex = i;
+            break;
+        }
+    }
+    if(idIndex>=0)
+    {
+        if(id_res.size()>1)
+        {
+            cout << "update error: can't update the id of more than one tuple."<<endl;
+            return false;
+        }
+        if(search_tuple(newCV[idIndex].second))
+        {
+            cout << "update error: the new value of id is existed." <<endl;
+            return false;
+        }
+    }
+
+    vector<string>value;
+    vector<int>colIndex;
+    for(unsigned int i=0;i<newCV.size();i++)
+    {
+        string colName = newCV[i].first;
+        colIndex.push_back(s->getColPos(colName));
+        value.push_back(newCV[i].second);
+    }
+    for(unsigned int i=0;i<id_res.size();i++)
+    {
+        void* dest = search_tuple(id_res[i]);
+        for(unsigned int j=0;j<value.size();j++)
+        {
+            parse_updated_data(dest,(char*)(value[j].c_str()),colIndex[j]);
+        }
+    }
+}
 void WriteTable::parse_updated_data(void *dest, char *input, int col)
 {
     ColumnType type = schema_->get_column_type(col);
@@ -348,105 +457,9 @@ void WriteTable::parse_updated_data(void *dest, char *input, int col)
     }
 }
 
-void* WriteTable::search_tuple(char* s_id)
-{
-    LinkedTupleBuffer *p_tmp = data_head_;
-    while(p_tmp)
-    {
-        int s = schema_->get_tuple_size();
-        void *tuple_buf = p_tmp->get_head();
-        while((char*)tuple_buf - (char*)(p_tmp->get_head()) <= p_tmp->cur_capacity() - s)
-        {
-            if(p_tmp->empty_tuple(tuple_buf))
-            {
-                p_tmp->tuple_add(tuple_buf, s);
-                continue;
-            }
-            void* offset;
-            int colindex = schema_->getColPos("id");
-            offset = schema_->calc_offset(tuple_buf, colindex);
-            if(strcmp((char*)offset,s_id)==0)
-            {
-                return tuple_buf;
-            }
-            p_tmp->tuple_add(tuple_buf, s);
-        }
-        p_tmp = p_tmp->get_next();
-    }
-    return NULL;
-}
 
-int mystrtok(char** argv,char* string)
-{
-    char* ptr;
-    char* split = " ";
-    int arg_num=0;
-    ptr = strtok(string , split);
-    //cout<<"ptr1 "<<ptr<<endl;
-    while(ptr != NULL){
-        argv[arg_num]=ptr;
-        arg_num++;
-        cout<<ptr<<endl;
-        ptr = strtok(NULL,split);
-    }
-    return arg_num;
-}
 
-bool WriteTable::insert(const char* input){
-    char* argv[100];
-    int col = schema_->getColPos("ID");
-    int arg_num = mystrtok(argv,input);
-    char* id = argv[col];
-    //printf("arg_num = %d\n",arg_num);
-    unsigned int s = schema_ -> columnCounts();
-    if(s != arg_num){
-        printf("the table size and input size is different!\n");
-    }  
-    void* new_data = search_tuple(id);
-    if(new_data == NULL){
-        printf("the id is exit! can't insert again\n");
-	return false;
-    }
-    schema_->parse_tuple(new_data,(const char**)(argv));
-    return true;
-}
-int Distance(int x , int y ,int X ,int Y)
-{
-    return sqrt((x-X)^2 + (y-Y)^2);
-}
 
-vector<void*> WriteTable::RangeQuery(int x,int y,int r)
-{
-    int x_col = schema_ ->getColPos("X");
-    int y_col = schema_ -> getColPos("Y");
-    int X,Y;
-    vector<void*> ret;
-    vector<string> tuple_data; 
-    LinkedTupleBuffer *cur;
-    cur = data_head_;
-    int tuple_num = cur->cur_capacity() / schema_->get_tuple_size();
-    while(cur != NULL)
-    {
-        for(unsigned int i=0; i<tuple_num;i++)
-	    {
-            void* data = get_tuple_offset(i);
-            bool flag=empty_tuple(data);
-            if(!flag)
-	        {
-                tuple_data = schema_ -> output_tuple(data);
-                stringstream stream(tuple_data[x_col]);
-                stream >> X;
-                stringstream stream(tuple_data[y_col]);
-                stream >> Y;
-                int dis = Distance(x,y,X,Y);
-                if(dis <= r^2)
-                    ret.push_back(data);
-            } 
-        }
-        cur = cur -> get_next();
-    }
-    return ret; 
-}
-	
-	
+
+
 
