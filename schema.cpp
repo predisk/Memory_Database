@@ -246,12 +246,6 @@ string Schema::getTableName() //OK
 int Schema::create(string input) //OK
 {
     // input = "tableName (colName1 dataType1,colName2 dataType2,...);"
-    if(!save(input))
-    {
-        cout << "ERROR: Schema save fail" <<endl;
-        return 0;
-    }
-
     tableName_ = input.substr(0,input.find(' '));
     string remain = input.substr(input.find(' ')+2,input.length());
 
@@ -305,7 +299,7 @@ int Schema::create(string input) //OK
         else
         {
             cout<<"ERROR! unknown type!"<<endl;
-            exit(1);
+            return -1;
         }
         if(lastOne)break;
     }
@@ -321,16 +315,4 @@ int Schema::getColPos(string colName) //OK
             return i;
     }
     return -1;
-}
-
-int Schema::save(string schema)
-{
-    std::ofstream metadata;
-    metadata.open("medata.txt",ios::app);
-    if(!metadata.is_open())
-        return 0;
-    schema = schema+"\n";
-    metadata << schema.c_str();
-    metadata.close();
-    return 1;
 }
