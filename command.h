@@ -114,7 +114,7 @@ bool Command::update(string cmd,string& tableName,vector<CVpair>&clause,vector<C
     cmd = cmd.substr(cmd.find(" ")+1,cmd.length());
     tableName = cmd.substr(0,cmd.find(" "));
     string data = cmd.substr(cmd.find("set")+4,cmd.find("<")-cmd.find("set")-5);
-    string where = cmd.substr(cmd.find("<")+1,cmd.find(">")-cmd.find("<")-1);
+    string where = cmd.substr(cmd.find("where")+6,cmd.find(">")-cmd.find("where")-6);
     clause = clauseToCVpair(where);
     newCV = clauseToCVpair(data);
     return true;
