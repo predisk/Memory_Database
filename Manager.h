@@ -27,6 +27,7 @@ protected:
     //or false
     bool isExist(string tableName);  //ok
 public:
+
     Manager():bufferSize_(0),path_(""),fileType_(".txt") {}  //ok
     ~Manager() {}
 
