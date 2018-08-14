@@ -16,8 +16,7 @@ WriteTable* Manager::getTable(string tableName)
             ret = loadTable(tableName);
         return ret;
     }
-    else
-        return 0;
+    return 0;
 }
 
 WriteTable* Manager::isOpen(string tableName)
@@ -61,6 +60,7 @@ Schema* Manager::loadSchema(string tableName)
                     cout << "ERROR: memory allocate for schema fail." << endl;
                 else
                     ret->create(line);
+                in.close();
                 return ret;
             }
         }
@@ -76,30 +76,27 @@ Schema* Manager::loadSchema(string tableName)
 
 WriteTable* Manager::loadTable(string tableName)
 {
+
     string full = path_+tableName+fileType_;
+    Schema* s =loadSchema(tableName);
+    WriteTable* ret = new WriteTable;
+    if(ret==0)
+    {
+        cout << "ERROR: memory allocate for table fail." << endl;
+        return 0;
+    }
+    ret->init(s,bufferSize_);
+    openTables_.push_back(ret);
+    isModify_.push_back(false);
+
     ifstream in;
     in.open(full.c_str());
     if(in.is_open())
     {
-        Schema* s =loadSchema(tableName);
-        WriteTable* ret = new WriteTable;
-        if(ret==0)
-            cout << "ERROR: memory allocate for table fail." << endl;
-        else
-        {
-            ret->init(s,bufferSize_);
-            ret->load(full," ");
-            openTables_.push_back(ret);
-            isModify_.push_back(false);
-            in.close();
-        }
-        return ret;
+        ret->load(full," ");
+        in.close();
     }
-    else
-    {
-        cout << "ERROR: open table file error when load table." << endl;
-        return 0;
-    }
+    return ret;
 }
 
 bool Manager::preserve(WriteTable* ptr)
@@ -141,6 +138,7 @@ bool Manager::preserve(WriteTable* ptr)
                 cur = cur->get_next();
             }
             isModify_[index] = false;
+            out.close();
             return true;
         }
         else
@@ -179,11 +177,12 @@ bool Manager::updateExistTable()
             string tableName = line.substr(0,line.find(" "));
             existTables_.push_back(tableName);
         }
+        in.close();
         return true;
     }
     else
     {
-        cout << "ERROR: open metadata error when init." << endl;
+        cout << "Warming: matadata file doesn't exist or can't open." << endl;
         return false;
     }
 }
@@ -232,7 +231,7 @@ Schema* Manager::creatSchema(string input)
     }
     return s;
 }
-}
+
 
 WriteTable* Manager::creatTable(Schema* s)
 {
@@ -276,12 +275,14 @@ bool Manager::loadTuple(string tableName,string path,string sep)
     WriteTable* w =getTable(tableName);
     if(!w)
         return false;
-    else
+    if(w->get_root()!=0 && w->get_root()->getTupleCount()!=0)
     {
-        w->load(path,sep);
-        modify(w);
-        return true;
+        cout << "load error: must load into an empty table."<<endl;
+        return false;
     }
+    w->load(path,sep);
+    modify(w);
+    return true;
 }
 
 bool Manager::insertTuple(string tableName,vector<CVpair>& data)
@@ -289,16 +290,12 @@ bool Manager::insertTuple(string tableName,vector<CVpair>& data)
     WriteTable* w = getTable(tableName);
     if(!w)
         return false;
-    else
+    if(w->insert(data))
     {
-        if(w->insert(data))
-        {
-            modify(w);
-            return true;
-        }
-        else
-            return false;
+        modify(w);
+        return true;
     }
+    return false;
 }
 
 bool Manager::updateTuple(string tableName,vector<CVpair>& clause,vector<CVpair>& data)
@@ -306,16 +303,12 @@ bool Manager::updateTuple(string tableName,vector<CVpair>& clause,vector<CVpair>
     WriteTable* w = getTable(tableName);
     if(!w)
         return false;
-    else
+    if(w->update(clause,data))
     {
-        if(w->update(clause,data))
-        {
-            modify(w);
-            return true;
-        }
-        else
-            return false;
+        modify(w);
+        return true;
     }
+    return false;
 }
 
 bool Manager::deleteTuple(string tableName,vector<CVpair>& clause)
@@ -323,16 +316,13 @@ bool Manager::deleteTuple(string tableName,vector<CVpair>& clause)
     WriteTable* w= getTable(tableName);
     if(!w)
         return false;
-    else
+    if(w->deleteTuple(clause))
     {
-        if(w->deleteTuple(clause))
-        {
-            modify(w);
-            return true;
-        }
-        else
-            return false;
+        modify(w);
+        return true;
     }
+    else
+        return false;
 }
 
 bool Manager::deleteTable(string tableName)
@@ -342,47 +332,54 @@ bool Manager::deleteTable(string tableName)
         cout << "the table doesn't exist." <<endl;
         return false;
     }
-    else
+
+    for(unsigned int i=0; i<openTables_.size(); i++)
     {
-        for(unsigned int i=0; i<openTables_.size(); i++)
-        {
-            string tn = openTables_[i]->schema()->getTableName();
-            if(!tn.compare(tableName))
-                close(tableName);
-        }
-
-        ifstream in;
-        ofstream out;
-        string inFile = path_+string("metadata")+fileType_;
-        string outFile = path_+string("tmp")+fileType_;
-        in.open(inFile.c_str());
-        out.open(outFile.c_str());
-        if(!in.is_open())
-        {
-            cout << "open metadata error when deleting." << endl;
-            return false;
-        }
-        if(!out.is_open())
-        {
-            cout << "create new file error."<<endl;
-            return false;
-        }
-
-        string line;
-        while(getline(in,line))
-        {
-            string tmpTableName = line.substr(0,line.find(' '));
-            if(tmpTableName.compare(tableName))
-            {
-                out << line.c_str() << endl;
-            }
-        }
-        in.close();
-        out.close();
-        remove((tableName+fileType_).c_str());
-        remove(inFile.c_str());
-        rename(outFile.c_str(),inFile.c_str());
+        string tn = openTables_[i]->schema()->getTableName();
+        if(!tn.compare(tableName))
+            close(tableName);
     }
+
+    ifstream in;
+    ofstream out;
+    string inFile = path_+string("metadata")+fileType_;
+    string outFile = path_+string("tmp")+fileType_;
+    in.open(inFile.c_str());
+    out.open(outFile.c_str());
+    if(!in.is_open())
+    {
+        cout << "open metadata error when deleting." << endl;
+        return false;
+    }
+    if(!out.is_open())
+    {
+        cout << "create new file error."<<endl;
+        return false;
+    }
+
+    string line;
+    while(getline(in,line))
+    {
+        string tmpTableName = line.substr(0,line.find(' '));
+        if(tmpTableName.compare(tableName))
+        {
+            out << line.c_str() << endl;
+        }
+    }
+    in.close();
+    out.close();
+    remove((tableName+fileType_).c_str());
+    remove(inFile.c_str());
+    rename(outFile.c_str(),inFile.c_str());
+    for(unsigned int i=0; i<existTables_.size(); i++)
+    {
+        if(!existTables_[i].compare(tableName))
+        {
+            existTables_.erase(existTables_.begin()+i);
+            break;
+        }
+    }
+    return true;
 }
 
 bool Manager::rangeQuery(string tableName,double x,double y,double r)
@@ -390,19 +387,16 @@ bool Manager::rangeQuery(string tableName,double x,double y,double r)
     WriteTable* w = getTable(tableName);
     if(!w)
         return false;
+    vector<void*>tuples = w->RangeQuery(x,y,r);
+    if(!tuples.size())
+    {
+        cout << "no tuple in the range." << endl;
+    }
     else
     {
-        vector<void*>tuples = w->RangeQuery(x,y,r);
-        if(tuples.size())
-        {
-            cout << "no tuple in the range." << endl;
-        }
-        else
-        {
-            w->printTupless(tuples);
-        }
-        return true;
+        w->printTuples(tuples);
     }
+    return true;
 }
 
 bool Manager::close(string tableName)
@@ -432,5 +426,6 @@ bool Manager::close(string tableName)
         else
             cout << "preserve fail and stop to close . " <<endl;
     }
+    return true;
 }
 
