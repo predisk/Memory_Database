@@ -7,7 +7,6 @@ public:
     bool insertTuple(string cmd,string& tableName,vector<CVpair>& data);
     bool deleteTuple(string cmd,string& tableName,vector<CVpair>& clause);
     bool update(string cmd,string& tableName,vector<CVpair>& clause,vector<CVpair>& newCV);
-    bool RangeQuery(string arg,double& x,double& y,double& r);
 };
 
 vector<CVpair> Command::clauseToCVpair(string where)
@@ -120,20 +119,6 @@ bool Command::update(string cmd,string& tableName,vector<CVpair>&clause,vector<C
     return true;
 }
 
-//x,y,r
-bool Command::RangeQuery(string arg,double& x,double& y,double& r)
-{
-    string strX = arg.substr(0,arg.find(","));
-    arg = arg.substr(arg.find(",")+1,arg.length());
-    string strY = arg.substr(0,arg.find(","));
-    arg = arg.substr(arg.find(","),arg.length());
-    string strR = arg;
-    istringstream istX(strX),istY(strY),istR(strR);
-    istX >> x;
-    istY >> y;
-    istR >> r;
-    return true;
-}
 
 
 
