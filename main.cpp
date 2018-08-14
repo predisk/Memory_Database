@@ -5,7 +5,6 @@
 #include "table.h"
 #include "Manager.h"
 #include "command.h"
-#include "Log.h"
 
 using namespace std;
 
@@ -14,13 +13,13 @@ int main()
     Manager m;
     Command cmd;
     m.init(40);//bufferSize
-    Log log1;
+
     while(1)
     {
         string input;
         cout << "-> ";
         getline(cin,input);
-        log1.write(input.data());
+
         transform(input.begin(),input.end(),input.begin(),::tolower);
         string head = input.substr(0,input.find(' '));
         string remain = input.substr(input.find(' ')+1,input.length());
@@ -64,7 +63,7 @@ int main()
         //DELETE from tablename <where id=value,x=4>
         else if(!head.compare("delete"))
         {
-            if(remain.find("where") >=0)
+            if((int)remain.find("where") >=0)
             {
                 string tableName;
                 vector<CVpair>clause;
@@ -76,7 +75,8 @@ int main()
                 cout << "If you decide to delete the whole table please input YES" << endl;
                 string sure;
                 getline(cin,sure);
-                if(!sure.compare("YES"))
+                transform(sure.begin(),sure.end(),sure.begin(),::tolower);
+                if(!sure.compare("yes"))
                 {
                     string tableName = remain.substr(remain.find("from")+5,remain.find("<")-remain.find("from")-6);
                     m.deleteTable(tableName);
@@ -92,24 +92,29 @@ int main()
             string tableName = remain.substr(0,remain.find(' '));
             string arg = remain.substr(remain.find('(')+1,remain.find(')')-remain.find('(')-1);
             double x,y,r;
-            cmd.RangeQuery(arg,x,y,r);
+
+            string strX = arg.substr(0,arg.find(","));
+            arg = arg.substr(arg.find(",")+1,arg.length());
+            string strY = arg.substr(0,arg.find(","));
+            arg = arg.substr(arg.find(",")+1,arg.length());
+            string strR = arg;
+            istringstream istX(strX),istY(strY),istR(strR);
+            istX >> x;
+            istY >> y;
+            istR >> r;
             m.rangeQuery(tableName,x,y,r);
         }
 
         //CLOSE tableName
-        else if(!head.compare("close"))
+        else if(!head.compare("close"))  //ok
         {
             string tableName = remain;
             m.close(tableName);
         }
-        else if(!head.compare("exit"))
+        else if(!head.compare("exit"))  //ok
         {
             m.auto_preserve();
             exit(0);
-        }
-        else if(!head.compare("RECOVER"))
-        {
-            log1.recover();
         }
         else
         {
