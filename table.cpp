@@ -132,7 +132,7 @@ void WriteTable::concatenate(const WriteTable &table)
     }
 }
 //typedef pair<string,string> CVpair; //colName+value;
-void WriteTable::query(vector<CVpair>& clause, vector <string>& id_res)
+void WriteTable::query(vector<CVpair>& clause, vector <void*>& tuple_res)
 {
     vector<string>colName;
     vector<string>value;
@@ -164,8 +164,8 @@ void WriteTable::query(vector<CVpair>& clause, vector <string>& id_res)
                 }
                 if(same)
                 {
-                    int idIdex = schema_->getColPos("id");
-                    id_res.push_back(entry[idIdex]);
+                    //int idIdex = schema_->getColPos("id");
+                    tuple_res.push_back(tupleAddr);
                 }
             }
             tupleAddr = itr.next();
@@ -195,7 +195,7 @@ void WriteTable::printTuples()
     }
 }
 
-void WriteTable::printTupless(vector<void*>&input)
+void WriteTable::printTuples(vector<void*>&input)
 {
     char sep = ' ';
     for(unsigned int i=0;i<input.size();i++)
@@ -218,16 +218,16 @@ unsigned int WriteTable::tupleTotal()
 }
 bool WriteTable::deleteTuple(vector<CVpair>& clause)
 {
-    vector<string>id_res;
-    query(clause,id_res);
-    if(!id_res.size())
+    vector<void*>tuple_res;
+    query(clause,tuple_res);
+    if(!tuple_res.size())
     {
         cout << "Couldn't delete: no such tuple." <<endl;
         return false;
     }
     else
     {
-        for(unsigned int i=0;i<id_res.size();i++)
+        for(unsigned int i=0;i<tuple_res.size();i++)
         {
             LinkedTupleBuffer* p_cur = data_head_;
             LinkedTupleBuffer* p_pre = 0;
@@ -239,9 +239,7 @@ bool WriteTable::deleteTuple(vector<CVpair>& clause)
                 {
                     if(!p_cur->empty_tuple(tupleAddr))
                     {
-                        vector<string>entry = schema_->output_tuple(tupleAddr);
-                        string id = entry[schema_->getColPos("id")];
-                        if(!(id.compare(id_res[i])))
+                        if(tupleAddr==tuple_res[i])
                         {
                             p_cur->delete_record(tupleAddr);
                             break;
@@ -364,11 +362,8 @@ vector<void*> WriteTable::RangeQuery(double centerX,double centerY,double r)
                 double x,y;
                 isX>>x;
                 isY>>y;
-                if(distance(x,y,centerX,centerY)<=r){
-                    cout<<"****"<<endl;
-                    cout<<"x"<<x<<"y"<<y<<endl;
+                if(distance(x,y,centerX,centerY)<=r)
                     ret.push_back(tupleAddr);
-                }
             }
             tupleAddr = itr.next();
         }
@@ -379,10 +374,10 @@ vector<void*> WriteTable::RangeQuery(double centerX,double centerY,double r)
 
 bool WriteTable::update(vector<CVpair>& clause,vector<CVpair>& newCV)
 {
-    vector<string>id_res;
-    query(clause,id_res);
+    vector<void*>tuple_res;
+    query(clause,tuple_res);
     Schema* s =schema();
-    if(!id_res.size())
+    if(!tuple_res.size())
     {
         cout << "update error: no such tuple." <<endl;
         return false;
@@ -399,15 +394,20 @@ bool WriteTable::update(vector<CVpair>& clause,vector<CVpair>& newCV)
     }
     if(idIndex>=0)
     {
-        if(id_res.size()>1)
+        if(tuple_res.size()>1)
         {
             cout << "update error: can't update the id of more than one tuple."<<endl;
             return false;
         }
-        if(search_tuple(newCV[idIndex].second))
+        if(void* tmp_addr = search_tuple(newCV[idIndex].second))
         {
-            cout << "update error: the new value of id is existed." <<endl;
-            return false;
+
+            if(tuple_res[0] != tmp_addr)
+            {
+                cout << "update error: the new value of id is existed." <<endl;
+                return false;  
+            }
+
         }
     }
 
@@ -419,9 +419,9 @@ bool WriteTable::update(vector<CVpair>& clause,vector<CVpair>& newCV)
         colIndex.push_back(s->getColPos(colName));
         value.push_back(newCV[i].second);
     }
-    for(unsigned int i=0;i<id_res.size();i++)
+    for(unsigned int i=0;i<tuple_res.size();i++)
     {
-        void* dest = search_tuple(id_res[i]);
+        void* dest = tuple_res[i];
         for(unsigned int j=0;j<value.size();j++)
         {
             parse_updated_data(dest,(char*)(value[j].c_str()),colIndex[j]);
