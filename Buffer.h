@@ -68,6 +68,11 @@ public:
 	TupleBuffer(void* head, unsigned int size , void* free , unsigned int tuplesize);
 
 	~TupleBuffer() {}
+	
+	
+    	unsigned int getTupleCount();//ÐÂÔö
+
+    	bool isEmptyBuffer();//ÐÂÔö
 
 	/*
 	 * return true if a tuple can be stored in this buffer
