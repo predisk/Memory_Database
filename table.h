@@ -84,7 +84,7 @@ class WriteTable : public Table
 
 
         void printTuples();
-        void printTupless(vector<void*>&input);
+        void printTuples(vector<void*>&input);
 
         bool insert(vector<CVpair>& entry);
 
