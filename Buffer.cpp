@@ -100,11 +100,23 @@ bool TupleBuffer::is_valid_tuple_add(void* loc)
 	return Buffer::is_valid_add(loc,tuplesize_);
 }
 
-
+//-------------------add-------------------
 void* TupleBuffer::allocate_tuple()
 {
+    tupleCount_++;
 	return Buffer::allocate(tuplesize_);
 }
+
+unsigned int TupleBuffer::getTupleCount()
+{
+    return tupleCount_;
+}
+
+bool TupleBuffer::isEmptyBuffer()
+{
+    return (tupleCount_==0);
+}
+//-------------------------------------------
 
 void TupleBuffer::tuple_add(void *&data, int len)
 {
