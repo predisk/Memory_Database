@@ -58,6 +58,7 @@ class TupleBuffer : public Buffer
 {
 protected:
 	unsigned int tuplesize_;
+	unsigned int tupleCount_;
 
 public:
 	/*
