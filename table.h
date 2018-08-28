@@ -80,7 +80,7 @@ class WriteTable : public Table
          */
         void concatenate(const WriteTable &table);
 
-        void query(vector<CVpair> &clause,vector <string>& id_res);
+        void query(vector<CVpair> &clause,vector <void*>& tuple_res);
 
 
         void printTuples();
