@@ -21,23 +21,33 @@ WriteTable* Manager::getTable(string tableName)
 
 WriteTable* Manager::isOpen(string tableName)
 {
+    pthread_rwlock_rdlock(&openLock_);
     for(unsigned int i=0; i<openTables_.size(); i++)
     {
         WriteTable* table = openTables_[i];
         Schema* s = table->schema();
         if(!(s->getTableName()).compare(tableName))
+        {
+            pthread_rwlock_unlock(&openLock_);
             return openTables_[i];
+        }
     }
+    pthread_rwlock_unlock(&openLock_);
     return 0;
 }
 
 bool Manager::isExist(string tableName)
 {
+    pthread_rwlock_rdlock(&existLock_);
     for(unsigned int i=0; i<existTables_.size(); i++)
     {
         if(!tableName.compare(existTables_[i]))
+        {
+            pthread_rwlock_unlock(&existLock_);
             return true;
+        }
     }
+    pthread_rwlock_unlock(&existLock_);
     return false;
 }
 
@@ -86,8 +96,10 @@ WriteTable* Manager::loadTable(string tableName)
         return 0;
     }
     ret->init(s,bufferSize_);
+
+    pthread_rwlock_wrlock(&openLock_);
     openTables_.push_back(ret);
-    isModify_.push_back(false);
+
 
     ifstream in;
     in.open(full.c_str());
@@ -96,6 +108,7 @@ WriteTable* Manager::loadTable(string tableName)
         ret->load(full," ");
         in.close();
     }
+    pthread_rwlock_unlock(&openLock_);
     return ret;
 }
 
@@ -111,7 +124,7 @@ bool Manager::preserve(WriteTable* ptr)
         }
     }
     //if table is modified then preserve
-    if(isModify_[index])
+    if(ptr->isModify())
     {
         string tableName = (ptr->schema())->getTableName();
         string fileName = tableName;
@@ -137,7 +150,7 @@ bool Manager::preserve(WriteTable* ptr)
                 }
                 cur = cur->get_next();
             }
-            isModify_[index] = false;
+            ptr->setUnmodify();
             out.close();
             return true;
         }
@@ -172,11 +185,13 @@ bool Manager::updateExistTable()
     if(in.is_open())
     {
         string line;
+        pthread_rwlock_wrlock(&existLock_);
         while(getline(in,line))
         {
             string tableName = line.substr(0,line.find(" "));
             existTables_.push_back(tableName);
         }
+        pthread_rwlock_unlock(&existLock_);
         in.close();
         return true;
     }
@@ -235,6 +250,8 @@ Schema* Manager::creatSchema(string input)
 
 WriteTable* Manager::creatTable(Schema* s)
 {
+    
+    
     WriteTable* w = new WriteTable;
     if(!w)
     {
@@ -244,20 +261,16 @@ WriteTable* Manager::creatTable(Schema* s)
     else
         w->init(s,bufferSize_);
 
-    openTables_.push_back(w);
-    isModify_.push_back(false);
+    pthread_rwlock_wrlock(&existLock_);
     existTables_.push_back(s->getTableName());
+    pthread_rwlock_unlock(&existLock_);
+
+    pthread_rwlock_wrlock(&openLock_);
+    openTables_.push_back(w);
+    pthread_rwlock_unlock(&openLock_);
     return w;
 }
 
-void Manager::modify(WriteTable* w)
-{
-    for(unsigned int i=0; i<openTables_.size(); i++)
-    {
-        if(w==(openTables_[i]))
-            isModify_[i] = true;
-    }
-}
 //------------------operator function---------------------
 bool Manager::create(string input)
 {
@@ -272,7 +285,7 @@ bool Manager::create(string input)
 
 bool Manager::loadTuple(string tableName,string path,string sep)
 {
-    WriteTable* w =getTable(tableName);
+    WriteTable* w = getTable(tableName);
     if(!w)
         return false;
     if(w->get_root()!=0 && w->get_root()->getTupleCount()!=0)
@@ -281,7 +294,7 @@ bool Manager::loadTuple(string tableName,string path,string sep)
         return false;
     }
     w->load(path,sep);
-    modify(w);
+    w->setModify();
     return true;
 }
 
@@ -292,7 +305,7 @@ bool Manager::insertTuple(string tableName,vector<CVpair>& data)
         return false;
     if(w->insert(data))
     {
-        modify(w);
+        w->setModify();
         return true;
     }
     return false;
@@ -302,10 +315,13 @@ bool Manager::updateTuple(string tableName,vector<CVpair>& clause,vector<CVpair>
 {
     WriteTable* w = getTable(tableName);
     if(!w)
+    {
+        cout << "update error: table isn't existed." << endl;
         return false;
+    }
     if(w->update(clause,data))
     {
-        modify(w);
+        w->setModify();
         return true;
     }
     return false;
@@ -318,14 +334,13 @@ bool Manager::deleteTuple(string tableName,vector<CVpair>& clause)
         return false;
     if(w->deleteTuple(clause))
     {
-        modify(w);
+        w->setModify();
         return true;
     }
-    else
-        return false;
+    return false;
 }
 
-bool Manager::deleteTable(string tableName)
+bool Manager::deleteTable(string tableName) // wair for locking
 {
     if(!isExist(tableName))
     {
@@ -399,10 +414,11 @@ bool Manager::rangeQuery(string tableName,double x,double y,double r)
     return true;
 }
 
-bool Manager::close(string tableName)
+bool Manager::close(string tableName)  // wait for locking
 {
     WriteTable* x = isOpen(tableName);
     int index;
+    pthread_rwlock_rdlock(&openLock_);
     for(unsigned int i=0; i<openTables_.size(); i++)
     {
         if(x==openTables_[i])
@@ -411,18 +427,21 @@ bool Manager::close(string tableName)
             break;
         }
     }
-
+    pthread_rwlock_unlock(&openLock_);
     if(!x)
-        cout << "The table " << tableName.c_str() << "is not opened." <<endl;
+        cout << "Close error : The table " << tableName.c_str() << " is not opened." <<endl;
     else
     {
+        
         if(preserve(x))
         {
+            pthread_rwlock_wrlock(&openLock_);
             x->close();
             delete x;
             openTables_.erase(openTables_.begin()+index);
-            isModify_.erase(isModify_.begin()+index);
+            pthread_rwlock_unlock(&openLock_);
         }
+        
         else
             cout << "preserve fail and stop to close . " <<endl;
     }
