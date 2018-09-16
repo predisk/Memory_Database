@@ -7,10 +7,14 @@
 #include<vector>
 #include<math.h>
 #include<sstream>
+#include<pthread.h>
 #include "Buffer.h"
 #include "schema.h"
 #include "loader.h"
 #include "parser.h"
+#include "Btree.h"
+#include "KDtree.h"
+
 typedef pair<string,string> CVpair; //colName+value;
 class Table
 {
@@ -52,7 +56,10 @@ class Table
 class WriteTable : public Table
 {
     public:
-        WriteTable() : last_(NULL), size_(0){}
+        WriteTable() : last_(NULL), size_(0), isModify_(false), index_btree_(NULL), index_kdtree_(NULL)
+        {
+          pthread_rwlock_init(&lock_, NULL);
+        }
 
         virtual ~WriteTable(){}
 
@@ -68,7 +75,7 @@ class WriteTable : public Table
          * creat new buckets as nucessary
          */
         /*append the vector input*/
-        virtual void append(const vector<string> &input);
+        virtual void* append(const vector<string> &input);
         /*append the @count num input*/
         virtual void append(const char **data, unsigned int count);
         /*update the existed tuple*/
@@ -81,7 +88,8 @@ class WriteTable : public Table
         void concatenate(const WriteTable &table);
 
         void query(vector<CVpair> &clause,vector <void*>& tuple_res);
-
+        void query_nonindex(vector<CVpair> &clause, vector<void *> &tuple_res);
+        void *query_index(int id_res, vector<CVpair> &clause);
 
         void printTuples();
         void printTuples(vector<void*>&input);
@@ -104,9 +112,21 @@ class WriteTable : public Table
 
         vector<void*> RangeQuery(double centerX,double centerY,double r);
 
+        void setModify();
+        void setUnmodify();
+        bool isModify();
+
+        void Try_rdlock();
+        void Try_wrlock();
+        void unlock();
+
     protected:
       LinkedTupleBuffer *last_;
       unsigned int size_;
+      bool isModify_;
+      pthread_rwlock_t lock_;
+      Btree *index_btree_;
+      KDtree *index_kdtree_;
 };
 
 #endif //TABLE_H

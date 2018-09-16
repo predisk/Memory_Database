@@ -66,7 +66,7 @@ Table::LoadErrorT WriteTable::load(const string& filepattern,
     return LOAD_OK;
 }
 
-void WriteTable::append(const vector<string> &input)
+void * WriteTable::append(const vector<string> &input)
 {
     unsigned int s = schema_->get_tuple_size();
     if(! last_->can_store(s))
@@ -77,6 +77,7 @@ void WriteTable::append(const vector<string> &input)
     }
     void *target = last_->allocate_tuple();
     schema_->parse_tuple(target, input);
+    return target;
 }
 
 void WriteTable::append(const char **data, unsigned int count)
@@ -133,6 +134,47 @@ void WriteTable::concatenate(const WriteTable &table)
 }
 //typedef pair<string,string> CVpair; //colName+value;
 void WriteTable::query(vector<CVpair>& clause, vector <void*>& tuple_res)
+{
+    for (int i = 0; i<clause.size(); i++)
+    {
+        if(!clause[i].first.compare("id"))
+        {
+            int id = atoi(clause[i].first.c_str());
+            void *res = 0;
+            if((res = query_index(id, clause)))
+            {
+                tuple_res.push_back(res);
+            }
+            break;
+        }
+        
+        else
+        {
+            query_nonindex(clause, tuple_res);
+        }
+        
+    }
+}
+
+void* WriteTable::query_index(int id_res, vector<CVpair>& clause)
+{
+    void *res;
+    res = index_btree_->search(id_res);
+    if(!res)
+        return 0;
+    for (int i = 0;i<clause.size();i++)
+    {
+        string colname = clause[i].first;
+        unsigned int colIndex = schema_->getColPos(colname);
+        vector<string> entry = schema_->output_tuple(res);
+        if(entry[colIndex].compare(clause[i].second))
+        {
+            return 0;
+        }
+    }
+    return res;
+}
+void WriteTable::query_nonindex(vector<CVpair>& clause, vector <void*>& tuple_res)
 {
     vector<string>colName;
     vector<string>value;
@@ -229,6 +271,8 @@ bool WriteTable::deleteTuple(vector<CVpair>& clause)
     {
         for(unsigned int i=0;i<tuple_res.size();i++)
         {
+            int id_index = schema_->getColPos("id");
+            string value_id = (schema_->output_tuple(tuple_res[i]))[id_index];
             LinkedTupleBuffer* p_cur = data_head_;
             LinkedTupleBuffer* p_pre = 0;
             while(p_cur)
@@ -242,6 +286,12 @@ bool WriteTable::deleteTuple(vector<CVpair>& clause)
                         if(tupleAddr==tuple_res[i])
                         {
                             p_cur->delete_record(tupleAddr);
+                            index_btree_->remove(atoi(value_id.c_str()));
+                            double coord_x = *(double*)(schema()->calc_offset(tupleAddr,schema_->getColPos("x")));
+                            double coord_y = *(double*)(schema()->calc_offset(tupleAddr, schema_->getColPos("y")));
+                            struct data tmp(coord_x, coord_y);
+                            KDpair del_pair = make_pair(tmp, tupleAddr);
+                            index_kdtree_->delete_node(&del_pair);
                             break;
                         }
                     }
@@ -268,8 +318,12 @@ bool WriteTable::deleteTuple(vector<CVpair>& clause)
         return true;
     }
 }
-
 void* WriteTable::search_tuple(string id)
+{
+    int i = atoi(id.c_str());
+    return index_btree_->search(i);
+}
+/*void* WriteTable::search_tuple(string id)
 {
     LinkedTupleBuffer* cur = get_root();
     while(cur)
@@ -290,7 +344,7 @@ void* WriteTable::search_tuple(string id)
         cur = cur->get_next();
     }
     return 0;
-}
+}*/
 
 bool WriteTable::insert(vector<CVpair>& entry)
 {
@@ -318,10 +372,11 @@ bool WriteTable::insert(vector<CVpair>& entry)
         cout << "insert error: id is repeated."<<endl;
         return false;
     }
-
     vector<string> input;
     for(unsigned int i=0;i<entry.size();i++)
         input.push_back("");
+    double coord_x;
+    double coord_y;
     for(unsigned int i=0;i<entry.size();i++)
     {
         int index = schema()->getColPos(entry[i].first);
@@ -330,13 +385,35 @@ bool WriteTable::insert(vector<CVpair>& entry)
             cout << "insert error: can't find the col named "  << entry[i].first.c_str() <<endl;
             return false;
         }
+
+        if(!entry[i].first.compare("x"))
+            coord_x = atof(entry[i].second.c_str());
+        if(!entry[i].second.compare("y"))
+            coord_y = atof(entry[i].second.c_str());
         input[index] = entry[i].second;
     }
-    append(input);
+    void* target = append(input);
+    /*index insert*/
+    KVpair insert_KV(atoi(id.c_str()), target);
+    index_btree_->insert(insert_KV);
+    index_kdtree_->insert(coord_x, coord_y, target);
+
     return true;
 }
 
-double WriteTable::distance(double x,double y,double centerX,double centerY)
+vector<void*> WriteTable::RangeQuery(double centerX, double centerY, double r)
+{
+    vector<KDpair *> res_pair;
+    vector<void*> res;
+    struct data *center = new struct data(centerX, centerY);
+    res_pair = index_kdtree_->RangeQuery(center, r);
+    for(int i=0;i<res_pair.size();i++)
+        res.push_back(res_pair[i]->second);
+    return res;
+
+}
+
+/*double WriteTable::distance(double x,double y,double centerX,double centerY)
 {
     return sqrt(pow(x-centerX,2)+pow(y-centerY,2));
 }
@@ -370,7 +447,7 @@ vector<void*> WriteTable::RangeQuery(double centerX,double centerY,double r)
         cur = cur->get_next();
     }
     return ret;
-}
+}*/
 
 bool WriteTable::update(vector<CVpair>& clause,vector<CVpair>& newCV)
 {
@@ -413,12 +490,26 @@ bool WriteTable::update(vector<CVpair>& clause,vector<CVpair>& newCV)
 
     vector<string>value;
     vector<int>colIndex;
+    int coord_x_index = -1;
+    int coord_y_index = -1;
     for(unsigned int i=0;i<newCV.size();i++)
     {
         string colName = newCV[i].first;
         colIndex.push_back(s->getColPos(colName));
         value.push_back(newCV[i].second);
+        if(colIndex[i] == schema()->getColPos("x"))
+            coord_x_index = i;
+        if(colIndex[i] == schema()->getColPos("y"))
+            coord_y_index = i;
+
     }
+    double coord_x_value;
+    double coord_y_value;
+    if(coord_x_index>0){
+        coord_x_value = atof(value[coord_x_index].c_str());        
+    }
+    if(coord_y_index>0)
+        coord_y_value = atof(value[coord_y_index].c_str());
     for(unsigned int i=0;i<tuple_res.size();i++)
     {
         void* dest = tuple_res[i];
@@ -426,8 +517,19 @@ bool WriteTable::update(vector<CVpair>& clause,vector<CVpair>& newCV)
         {
             parse_updated_data(dest,(char*)(value[j].c_str()),colIndex[j]);
         }
+        if(coord_x_index<0&&coord_y_index>0)
+            coord_x_value = *(double *)schema()->calc_offset(tuple_res[i], schema()->getColPos("x"));
+        else if(coord_y_index<0&&coord_x_index>0)
+            coord_y_value = *(double *)schema()->calc_offset(tuple_res[i], schema()->getColPos("x"));
+        else if(coord_y_index<0&&coord_x_index<0)
+            continue;
+        struct data tmp(coord_x_value, coord_y_value);
+        KDpair update_pair = make_pair(tmp, tuple_res[i]);
+        index_kdtree_->update_coord(&update_pair);
     }
+    return true;
 }
+
 void WriteTable::parse_updated_data(void *dest, char *input, int col)
 {
     ColumnType type = schema_->get_column_type(col);
@@ -457,7 +559,35 @@ void WriteTable::parse_updated_data(void *dest, char *input, int col)
     }
 }
 
+void WriteTable::setModify()
+{
+    isModify_ = true;
+}
 
+void WriteTable::setUnmodify()
+{
+    isModify_ = false;
+}
+
+bool WriteTable::isModify()
+{
+    return isModify_;
+}
+
+void WriteTable::Try_rdlock()
+{
+    pthread_rwlock_rdlock(&lock_);
+}
+
+void WriteTable::Try_wrlock()
+{
+    pthread_rwlock_wrlock(&lock_);
+}
+
+void WriteTable::unlock()
+{
+    pthread_rwlock_unlock(&lock_);
+}
 
 
 
