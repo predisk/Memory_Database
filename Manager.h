@@ -4,17 +4,15 @@
 #include<iostream>
 #include<vector>
 #include<fstream>
-#include<pthread.h>
 class Manager
 {
 private:
     vector<WriteTable*>openTables_;
+    vector<bool>isModify_;
     vector<string>existTables_;
     int bufferSize_;
     string path_;
     string fileType_;
-    pthread_rwlock_t openLock_;
-    pthread_rwlock_t existLock_;
 protected:
     //load the table from disk to memory
     WriteTable* loadTable(string tableName); //ok
@@ -30,11 +28,7 @@ protected:
     bool isExist(string tableName);  //ok
 public:
 
-    Manager():bufferSize_(0),path_(""),fileType_(".txt") 
-    {
-        pthread_rwlock_init(&openLock_, NULL);
-        pthread_rwlock_init(&existLock_,NULL);
-    }  //ok
+    Manager():bufferSize_(0),path_(""),fileType_(".txt") {}  //ok
     ~Manager() {}
 
     //init the existTables
@@ -48,6 +42,8 @@ public:
     int auto_preserve();
 
     bool saveSchema(string schema);
+
+    void modify(WriteTable* w);
 
     bool updateExistTable();
 
@@ -73,4 +69,19 @@ public:
     bool close(string tableName);
 
     bool recovery(string line);
+    //-----------test-------------------
+    vector<bool> testModify()
+    {
+        return isModify_;
+    }
+
+    vector<WriteTable*> testOpen()
+    {
+        return openTables_;
+    }
+
+    vector<string> testExist()
+    {
+        return existTables_;
+    }
 };
