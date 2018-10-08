@@ -17,10 +17,8 @@ Manager.o : Buffer.h table.h schema.h
 schema.o : schema.h
 Buffer.o : Buffer.h
 loader.o : loader.h
-parser.o : parser.h
-table.o : table.h Buffer.h schema.h loader.h parser.h
+table.o : table.h Buffer.h schema.h loader.h
 main.o : table.h Manager.h command.h schema.h
-
 
 .PHONY : clean
 clean:
