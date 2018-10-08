@@ -11,7 +11,7 @@
 #include "Buffer.h"
 #include "schema.h"
 #include "loader.h"
-#include "parser.h"
+//#include "parser.h"
 #include "Btree.h"
 #include "KDtree.h"
 
